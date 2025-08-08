@@ -22,7 +22,7 @@ export async function shouldSkipJob() {
   return false;
 }
 
-export async function saveJobCache({ transcript, audioPath = "./public/audio.mp3" }) {
+export async function saveJobCache({ transcript, audioPath = "./public/snarkyNewsAudio.mp3" }) {
   const data = {
     lastRun: new Date().toISOString(),
     transcript: transcript.slice(0, 500),
