@@ -1,7 +1,7 @@
-// services/uncensorText.js
+// services/clean.js
 
-export function uncensorText(text) {
-    console.log("[Uncensor] Replacing censored curse words...");
+export function clean(text) {
+    console.log("🧹 [Cleaning] Cleaning up text...");
 
     const replacements = {
         'f[*]*k': 'fuck',
@@ -22,6 +22,6 @@ export function uncensorText(text) {
         const regex = new RegExp(pattern, 'gi');
         text = text.replace(regex, replacements[pattern]);
     }
-
+    console.log(`🧹Cleaned text: ${text}`);
     return text;
 }

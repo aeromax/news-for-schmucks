@@ -4,9 +4,10 @@
 async function loadCaptionsFromJSON(jsonUrl) {
   const res = await fetch(jsonUrl);
   const data = (await res.json())[0];
-
+  
   const duration = parseFloat(data.duration);
   const captions = Array.isArray(data.captions) ? data.captions : [];
+  
   if (!duration || captions.length === 0) {
     console.error('❌ Invalid structure. Duration or captions missing.', { duration, captions });
     return;

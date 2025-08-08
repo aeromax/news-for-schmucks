@@ -2,7 +2,7 @@
 
 import { fetchHeadlines } from "./services/fetchHeadlines.js";
 import { summarizeNews } from "./services/summarizeNews.js";
-import { uncensorText } from "./services/uncensorText.js";
+import { clean } from "./services/clean.js";
 import { generateSpeech } from "./services/generateSpeech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import { shouldSkipJob, saveJobCache } from "./services/cache.js";
@@ -20,18 +20,15 @@ const isTest = process.argv.includes("--test");
     if (!isTest && await shouldSkipJob()) process.exit(0);
 
     try {
-        console.log(">>", typeof getAudioDuration);
         const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
         const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
-        const uncensored = uncensorText(summary);
-        const audioBuffer = await generateSpeech(env.OPENAI_API_KEY, uncensored, isTest);
-        await saveFiles(__dirname, uncensored, audioBuffer);
+        const cleanText = clean(summary);
+        const audioBuffer = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
+        await saveFiles(__dirname, cleanText, audioBuffer);
         const duration = await getAudioDuration(path.join(__dirname, "public/audio.mp3"));
-        console.log(`🕒 Duration: ${duration.toFixed(2)} seconds`);
-
 
         if (!isTest) {
-            await saveJobCache({ transcript: uncensored, duration });
+            await saveJobCache({ transcript: cleanText, duration });
         }
 
         console.log("✅ All done! Files written to /public.");
