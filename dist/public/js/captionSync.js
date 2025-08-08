@@ -1,3 +1,4 @@
+
 // captionSync.js — reset version to load captions and duration from JSON file
 
 async function loadCaptionsFromJSON(jsonUrl) {
@@ -46,5 +47,5 @@ async function loadCaptionsFromJSON(jsonUrl) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadCaptionsFromJSON('/n8n/snarkyNewsTranscript.json');
+  loadCaptionsFromJSON('transcript.json');
 });

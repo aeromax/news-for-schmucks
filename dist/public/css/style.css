@@ -1,0 +1,353 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-family: "Poppins", "Helvetica Neue", Helvetica, sans-serif;
+}
+
+.content-wrapper {
+  height: 90%;
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 50px;
+  padding: 20px;
+}
+
+.headline-wrapper {
+  flex: 0 0 10%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  margin: 0;
+  text-align: center;
+}
+
+#headline {
+  letter-spacing: -5px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.subhead {
+  font-size: 1.5rem;
+  font-weight: 400;
+
+}
+
+
+
+/* --------------------------------------------------
+   PALETTE
+   -------------------------------------------------- */
+.palette-1 {
+  --bg-0: #101030;
+  --bg-1: #050515;
+  --blob-1: #ffffff;
+  --blob-2: #8002ff;
+  --blob-3: #00ffff;
+  --blob-4: #ff3083;
+}
+
+body {
+  padding: 0;
+  margin: 0;
+}
+
+.container {
+  background: var(--bg-1);
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+}
+
+
+#caption-box {
+  height: 250px;
+  overflow: hidden;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  color: white;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+#caption-scroll {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  white-space: pre-line;
+  visibility: hidden;
+    animation-play-state: paused;
+}
+
+@keyframes scroll-up {
+  from {
+    transform: translateY(0%);
+  }
+
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+/* --------------------------------------------------
+   BLOB CONTAINER
+   -------------------------------------------------- */
+.blobs {
+  position: relative;
+  cursor: pointer;
+  width: 90vw;
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  max-height: 330px;
+}
+
+/* --------------------------------------------------
+   GENERIC BLOB STYLES – circular neon rings with inner glow
+   -------------------------------------------------- */
+.blob {
+  --scale: 1;
+  --border-thickness: 6px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--w);
+  height: var(--hgt);
+  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%) scale(var(--scale));
+  border-radius: 50%;
+  background: radial-gradient(circle at center,
+      transparent 0%,
+      color-mix(in srgb, var(--blob-color) 5%, transparent) 85%,
+      color-mix(in srgb, var(--blob-color) 90%, transparent) 95%,
+      transparent 100%);
+  border: var(--border-thickness) solid var(--blob-color);
+  mix-blend-mode: color-dodge;
+  filter: brightness(1.8) blur(3px) drop-shadow(0 0 12px hsl(var(--h) var(--s) var(--l) / 0.8));
+  animation: rotateBlob var(--rot) linear infinite;
+}
+
+
+@keyframes rotateBlob {
+  from {
+    transform: translate(-50%, -50%) scale(var(--scale)) rotate(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) scale(var(--scale)) rotate(360deg);
+  }
+}
+
+
+
+/* --------------------------------------------------
+   INDIVIDUAL BLOBS — VARIANCE IN SIZE / POSITION / ROTATION SPEED
+   -------------------------------------------------- */
+/* White ring */
+.blob-1 {
+  --w: 300px;
+  --hgt: 300px;
+  --h: 325;
+  --s: 100%;
+  --l: 55%;
+  top: 50%;
+  left: 50%;
+  --rot: 22s;
+  --blob-color: var(--blob-1);
+  z-index: 1;
+}
+
+/* Indigo ring  */
+.blob-2 {
+  --w: 290px;
+  --hgt: 280px;
+  transform: rotate(-12deg);
+  --h: 239;
+  --s: 44%;
+  --l: 47%;
+  top: 50%;
+  left: 50%;
+  --rot: 30s;
+  animation-direction: reverse;
+  --blob-color: var(--blob-2);
+  z-index: 1;
+}
+
+/* Electric‑blue ring  */
+.blob-3 {
+  --w: 290px;
+  --hgt: 280px;
+  --h: 184;
+  --s: 64%;
+  --l: 67%;
+  top: 50%;
+  left: 50%;
+  --rot: 14s;
+  --blob-color: var(--blob-3);
+  z-index: 1;
+}
+
+/* Magenta */
+.blob-4 {
+  --w: 300px;
+  --hgt: 320px;
+  --h: 240;
+  --s: 62%;
+  --l: 5%;
+  top: 50%;
+  left: 50%;
+  --rot: 60s;
+  animation-direction: reverse;
+  --blob-color: var(--blob-4);
+  z-index: 1;
+}
+
+/* --------------------------------------------------
+   PLAYER ICON
+   -------------------------------------------------- */
+#playIcon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  width: 80px;
+  height: 80px;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  mix-blend-mode: screen;
+  overflow: visible;
+}
+
+/* core SVG styling */
+#playIcon svg {
+  width: 100%;
+  height: 100%;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 6px;
+  fill: none;
+  overflow: visible;
+  /* filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.6)); */
+}
+
+#playIcon .progress-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, .85);
+  stroke-width: 10px;
+  stroke-linecap: round;
+
+  /* start at 12 o’clock */
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+
+  /* dasharray set by JS; make sure it animates smoothly */
+  transition: stroke-dashoffset 0.25s linear;
+  mix-blend-mode: screen;
+  /* keeps the glow look */
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, .75));
+}
+
+#playIcon .progress-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 8px;
+  /* match the foreground ring */
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+/* Rotate play triangle 90° CW */
+#playIcon .play-triangle {
+  transform-origin: 50% 50%;
+  transform: rotate(90deg);
+}
+
+
+/* show / hide play vs pause glyphs */
+#playIcon .play-triangle,
+#playIcon .pause-bars {
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+#playIcon.play .play-triangle {
+  opacity: 1;
+}
+
+#playIcon.play .pause-bars {
+  opacity: 0;
+}
+
+#playIcon.pause .play-triangle {
+  opacity: 0;
+}
+
+#playIcon.pause .pause-bars {
+  opacity: 1;
+}
+
+/* ensure blobs pause when audio pauses */
+.paused-animation .blob {
+  animation-play-state: paused;
+}
+
+@media (max-width: 480px) {
+
+  /* shrink headline stack */
+  .headline-wrapper {
+    font-size: 1.4rem;
+  }
+
+  #headline {
+    letter-spacing: -4px;
+  }
+
+  .subhead {
+    font-size: 1rem;
+  }
+
+  /* captions a bit smaller, tighter padding */
+  #caption-box {
+    font-size: 1.2rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* play button & progress ring scale down */
+  #playIcon {
+    width: 64px;
+    height: 64px;
+  }
+
+  #playIcon svg {
+    stroke-width: 4px;
+  }
+
+  /* blob container shrinks slightly on phones */
+  .blobs {
+    max-width: 240px;
+    max-height: 240px;
+  }
+}

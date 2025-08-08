@@ -10,7 +10,7 @@ export async function generateSpeech(apiKey, inputText, testMode = false) {
     console.log("[TTS] Generating speech" + (testMode ? " (TEST MODE)" : ""));
 
     if (testMode) {
-        const filePath = path.resolve("./test/snarkyNewsAudio.mp3");
+        const filePath = path.resolve("./test/audio.mp3");
         const data = await fs.readFile(filePath);
         console.log("🔊 Loaded fake TTS audio from disk.");
         return data;
