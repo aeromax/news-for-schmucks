@@ -1,38 +1,38 @@
 #!/bin/bash
 
-echo "🛠 Setting up news-for-schmucks backend..."
+echo "🛠 Setting up news-for-schmucks dist..."
 
 # Create folder structure
-mkdir -p news-for-schmucks-backend/services
-mkdir -p news-for-schmucks-backend/utils
-mkdir -p news-for-schmucks-backend/public
+mkdir -p news-for-schmucks-dist/services
+mkdir -p news-for-schmucks-dist/utils
+mkdir -p news-for-schmucks-dist/public
 
 # Create main files
-touch news-for-schmucks-backend/index.js
-touch news-for-schmucks-backend/package.json
-touch news-for-schmucks-backend/.gitignore
+touch news-for-schmucks-dist/index.js
+touch news-for-schmucks-dist/package.json
+touch news-for-schmucks-dist/.gitignore
 
 # Create service files
-touch news-for-schmucks-backend/services/fetchHeadlines.js
-touch news-for-schmucks-backend/services/summarizeNews.js
-touch news-for-schmucks-backend/services/uncensorText.js
-touch news-for-schmucks-backend/services/generateSpeech.js
-touch news-for-schmucks-backend/services/saveFiles.js
+touch news-for-schmucks-dist/services/fetchHeadlines.js
+touch news-for-schmucks-dist/services/summarizeNews.js
+touch news-for-schmucks-dist/services/uncensorText.js
+touch news-for-schmucks-dist/services/generateSpeech.js
+touch news-for-schmucks-dist/services/saveFiles.js
 
 # Create utils file
-touch news-for-schmucks-backend/utils/env.js
+touch news-for-schmucks-dist/utils/env.js
 
 # Init default content
-cat <<EOF > news-for-schmucks-backend/.gitignore
+cat <<EOF > news-for-schmucks-dist/.gitignore
 node_modules
 .env
 public/audio.mp3
 public/transcript.json
 EOF
 
-cat <<EOF > news-for-schmucks-backend/package.json
+cat <<EOF > news-for-schmucks-dist/package.json
 {
-  "name": "news-for-schmucks-backend",
+  "name": "news-for-schmucks-dist",
   "type": "module",
   "version": "1.0.0",
   "main": "index.js",

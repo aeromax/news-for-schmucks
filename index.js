@@ -1,4 +1,4 @@
-// snarkynews-backend/index.js
+// snarkynews-dist/index.js
 
 import express from "express";
 import axios from "axios";
@@ -78,7 +78,7 @@ cron.schedule("0 1 * * *", async () => {
   }
 });
 
-app.get("/status", (req, res) => res.send("SnarkyNews backend running."));
+app.get("/status", (req, res) => res.send("SnarkyNews dist running."));
 
 app.use("/public", express.static(path.join(__dirname, "public")));
 
