@@ -26,6 +26,10 @@ const isTest = process.argv.includes("--test");
         const audioBuffer = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
         await saveFiles(__dirname, cleanText, audioBuffer);
         const duration = await getAudioDuration(path.join(__dirname, "public/audio.mp3"));
+        cleanText.duration = duration;
+        const updatedTranscript = cleanText;
+        console.log(updatedTranscript);
+        await saveFiles(__dirname, updatedTranscript, audioBuffer);
 
         if (!isTest) {
             await saveJobCache({ transcript: cleanText, duration });
