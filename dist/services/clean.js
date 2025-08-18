@@ -37,8 +37,11 @@ export function clean(input) {
 
     for (let pattern in replacements) {
         const regex = new RegExp(pattern, 'gi');
-        text = text.replace(regex, replacements[pattern]);
+        input = input.replace(regex, replacements[pattern]);
     }
-    console.log(`🧹Cleaned text: ${text}`);
-    return text;
+
+    // 🔹 Remove line breaks
+    input = input.replace(/\n+/g, ' ');
+    input = JSON.parse(input);
+    return input;
 }
