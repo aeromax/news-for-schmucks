@@ -80,7 +80,7 @@ body {
 #caption-box {
   height: 250px;
   overflow: hidden;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 600;
   text-align: center;
   color: white;
@@ -331,7 +331,7 @@ body {
 
   /* captions a bit smaller, tighter padding */
   #caption-box {
-    font-size: 1.2rem;
+    font-size: 1rem;
     padding: 0.5rem 0.75rem;
   }
 
