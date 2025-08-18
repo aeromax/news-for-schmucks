@@ -9,5 +9,5 @@ export async function saveFiles(baseDir, transcriptText, audioBuffer) {
     const audioPath = path.join(baseDir, "public/audio.mp3");
     const transcriptPath = path.join(baseDir, "public/transcript.json");
     await fs.writeFile(audioPath, audioBuffer);
-    await fs.writeFile(transcriptPath, JSON.stringify({ text: transcriptText }, null, 2));
+    await fs.writeFile(transcriptPath, JSON.stringify({ captions: transcriptText }, null, 2));
 }

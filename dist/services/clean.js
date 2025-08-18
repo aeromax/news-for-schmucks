@@ -24,15 +24,11 @@ export function clean(input) {
         'f[*]*k': 'fuck',
         's[*]*t': 'shit',
         '[*]ss': 'ass',
-        'b[*]*tch': 'bitch',
-        'a[*]*hole': 'asshole',
-        'd[*]*n': 'damn',
-        'c[*]*t': 'cunt',
-        'p[*]*ssy': 'pussy',
-        'm[*]*therf[*]*ker': 'motherfucker',
-        'd[*]*ck': 'dick',
-        'c[*]*ck': 'cock',
-        'h[*]*ll': 'hell'
+        'b[*]tch': 'bitch',
+        'd[*]mn': 'damn',
+        'm[*]therf[*]ker': 'motherfucker',
+        'd[*]ck': 'dick',
+        'h[*]ll': 'hell'
     };
 
     for (let pattern in replacements) {
@@ -41,7 +37,7 @@ export function clean(input) {
     }
 
     // 🔹 Remove line breaks
-    input = input.replace(/\n+/g, ' ');
+    input = input.replace(/\n+/g, '');
     input = JSON.parse(input);
     return input;
 }

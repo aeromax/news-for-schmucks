@@ -8,8 +8,8 @@ const SYSTEM_PROMPT = `You are the world's most angry, cynical person, presentin
 
 export async function summarizeNews(apiKey, urls, testMode = false) {
     console.log("[Summarize] Generating summary" + (testMode ? " (TEST MODE)" : "") + "...");
-
     let response;
+    let content;
     if (testMode) {
         const raw = await fs.readFile("./test/gptResponse.json", "utf-8");
         response = JSON.parse(raw);
@@ -35,13 +35,11 @@ export async function summarizeNews(apiKey, urls, testMode = false) {
                 }
             }
         );
+        response = raw.data;
     }
-    const content = response.choices[0].message.content;
+    content = response.choices[0].message.content;
+    const split = content
+        .split(/\n+/);
     
-    const lines = content
-        .split(/\n+/)
-        .map(l => l.trim())
-        .filter(Boolean);
-
-    return {"text":lines} ;
+    return {"text" : split} ;
 }
