@@ -35,7 +35,31 @@ const isTest = process.argv.includes("--test");
 
         console.log("✅ All done! Files written to /public.");
     } catch (err) {
-        console.error("❌ Error during job:", err.response?.data || err.stack);
+        // console.error("❌ Error during job:", err.response?.data || err.stack);
+        showErr(err);
         process.exit(1);
     }
 })();
+
+
+
+function showErr(err) {
+  // Prefer full stack if available
+  if (err?.stack) {
+    console.error(err.stack);
+    return;
+  }
+
+  // Axios error with possible buffer body
+  const data = err?.response?.data ?? err;
+  if (Buffer.isBuffer(data)) {
+    const text = data.toString("utf8");
+    try {
+      console.error("[HTTP Error JSON]", JSON.parse(text));
+    } catch {
+      console.error("[HTTP Error Text]", text);
+    }
+  } else {
+    console.error("[Error]", data);
+  }
+}
