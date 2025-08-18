@@ -1,4 +1,4 @@
 node_modules
 .env
-public/audio.mp3
-public/transcript.json
+dist/public/audio.mp3
+dist/public/transcript.json
