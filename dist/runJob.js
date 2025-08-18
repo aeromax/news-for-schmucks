@@ -33,7 +33,7 @@ const isTest = process.argv.includes("--test");
 
         console.log("✅ All done! Files written to /public.");
     } catch (err) {
-        console.error("❌ Error during job:", err.response?.data || err.message);
+        console.error("❌ Error during job:", err.response?.data || err.stack);
         process.exit(1);
     }
 })();
