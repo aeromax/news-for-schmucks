@@ -3,7 +3,7 @@
 import { fetchHeadlines } from "./services/fetchHeadlines.js";
 import { summarizeNews } from "./services/summarizeNews.js";
 import { clean } from "./services/clean.js";
-import { generateSpeech } from "./services/generateSpeech.js";
+import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import { shouldSkipJob, saveJobCache } from "./services/cache.js";
 import { env } from "./utils/env.js";
@@ -23,12 +23,11 @@ const isTest = process.argv.includes("--test");
         const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
         const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
         const cleanText = clean(summary);
-        const audioBuffer = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
-        const duration = await getAudioDuration(path.join(__dirname, "public/audio.mp3"));
+        const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
+        const duration = await getAudioDuration("./test/audio.mp3");
         cleanText.duration = duration;
         const updatedTranscript = cleanText;
-        console.log(updatedTranscript);
-        await saveFiles(__dirname, updatedTranscript, audioBuffer);
+        await saveFiles(__dirname, updatedTranscript, speech);
 
         if (!isTest) {
             await saveJobCache({ transcript: summary, duration });
