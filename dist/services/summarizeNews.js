@@ -16,25 +16,25 @@ export async function summarizeNews(apiKey, urls, testMode = false) {
         console.log("📝 Loaded test summary from disk.");
     } else {
         const raw = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-            model: "gpt-4o",
-            messages: [
-                { role: "system", content: SYSTEM_PROMPT },
-                {
-                    role: "user",
+            "https://api.openai.com/v1/chat/completions",
+            {
+                model: "gpt-4o",
+                messages: [
+                    { role: "system", content: SYSTEM_PROMPT },
+                    {
+                        role: "user",
                         content: `Extract and summarize the text from these article links: ${urls}. Provide quick commentary on 10 of them. Preface each headline with a number. Insert the headline in bold. Don't include links. Entire read should be < 3 minutes. Start with: \"Welcome to News for Schmucks.\"`
+                    }
+                ],
+                temperature: 1,
+                top_p: 1
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${apiKey}`
                 }
-            ],
-            temperature: 1,
-            top_p: 1
-        },
-        {
-            headers: {
-                Authorization: `Bearer ${apiKey}`
             }
-        }
-    );
+        );
     }
     const content = response.choices[0].message.content;
     

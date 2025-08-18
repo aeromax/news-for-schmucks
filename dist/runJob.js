@@ -24,7 +24,6 @@ const isTest = process.argv.includes("--test");
         const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
         const cleanText = clean(summary);
         const audioBuffer = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
-        await saveFiles(__dirname, cleanText, audioBuffer);
         const duration = await getAudioDuration(path.join(__dirname, "public/audio.mp3"));
         cleanText.duration = duration;
         const updatedTranscript = cleanText;
@@ -32,7 +31,7 @@ const isTest = process.argv.includes("--test");
         await saveFiles(__dirname, updatedTranscript, audioBuffer);
 
         if (!isTest) {
-            await saveJobCache({ transcript: cleanText, duration });
+            await saveJobCache({ transcript: summary, duration });
         }
 
         console.log("✅ All done! Files written to /public.");

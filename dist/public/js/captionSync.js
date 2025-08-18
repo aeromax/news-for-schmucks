@@ -4,7 +4,7 @@
 async function loadCaptionsFromJSON(jsonUrl) {
   const res = await fetch(jsonUrl);
   const data = (await res.json())[0];
-  
+  console.log(data);
   const duration = parseFloat(data.duration);
   const captions = Array.isArray(data.captions) ? data.captions : [];
   
