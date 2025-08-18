@@ -3,11 +3,9 @@
 
 async function loadCaptionsFromJSON(jsonUrl) {
   const res = await fetch(jsonUrl);
-  const data = (await res.json())[0];
-  console.log(data);
-  const duration = parseFloat(data.duration);
-  const captions = Array.isArray(data.captions) ? data.captions : [];
-  
+  const data = (await res.json());
+  const duration = parseFloat(data.captions.duration);
+  const captions = Array.isArray(data.captions.text) ? data.captions.text : [];
   if (!duration || captions.length === 0) {
     console.error('❌ Invalid structure. Duration or captions missing.', { duration, captions });
     return;
@@ -48,5 +46,5 @@ async function loadCaptionsFromJSON(jsonUrl) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadCaptionsFromJSON('transcript.json');
+  loadCaptionsFromJSON('./transcript.json');
 });
