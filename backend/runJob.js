@@ -11,7 +11,7 @@ import { getAudioDuration } from "./services/getDuration.js";
 
 const isTest = process.argv.includes("--test");
 
-export async function runJob() {
+(async () => {
   console.log(`[Manual Run] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`);
 
   try {
@@ -33,7 +33,7 @@ export async function runJob() {
     showErr(err);
     process.exit(1);
   }
-};
+})();
 
 
 
