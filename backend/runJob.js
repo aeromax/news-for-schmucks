@@ -8,36 +8,41 @@ import { saveFiles } from "./services/saveFiles.js";
 import { shouldSkipJob, saveJobCache } from "./services/cache.js";
 import { env } from "./utils/env.js";
 import { getAudioDuration } from "./services/getDuration.js";
-
+import { shouldSkipJob, saveJobCache } from "./dist/services/cache.js";
 
 
 const isTest = process.argv.includes("--test");
 
 (async () => {
-    console.log(`[Manual Run] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`);
+  console.log(`[Manual Run] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`);
 
-    if (!isTest && await shouldSkipJob()) process.exit(0);
+  if (!isTest && await shouldSkipJob(6)) process.exit(0);
 
-    try {
-        const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
-        const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
-        const cleanText = clean(summary);
-        const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
-        const duration = await getAudioDuration("./test/audio.mp3");
-        cleanText.duration = duration;
-        const updatedTranscript = cleanText;
-        await saveFiles("./", updatedTranscript, speech);
+  try {
+    const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
+    const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
+    const cleanText = clean(summary);
+    const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
+    const duration = await getAudioDuration("./test/audio.mp3");
+    cleanText.duration = duration;
+    const updatedTranscript = cleanText;
+    await saveFiles("./", updatedTranscript, speech);
 
-        if (!isTest) {
-            await saveJobCache({ transcript: summary, duration });
-        }
-
-        console.log("✅ All done! Files written to /public.");
-    } catch (err) {
-        // console.error("❌ Error during job:", err.response?.data || err.stack);
-        showErr(err);
-        process.exit(1);
+    if (!isTest) {
+      await saveJobCache({
+        transcript: /* could be string OR { text: [...] } */,
+        duration,                                // number or null
+        audioPath: "dist/public/audio.mp3",      // adjust if needed
+        extra: { linesCount: Array.isArray(lines) ? lines.length : undefined }
+      });
     }
+
+    console.log("✅ All done! Files written to /public.");
+  } catch (err) {
+    // console.error("❌ Error during job:", err.response?.data || err.stack);
+    showErr(err);
+    process.exit(1);
+  }
 })();
 
 
