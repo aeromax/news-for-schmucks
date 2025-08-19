@@ -14,8 +14,6 @@ const isTest = process.argv.includes("--test");
 (async () => {
   console.log(`[Manual Run] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`);
 
-  if (!isTest && await shouldSkipJob(6)) process.exit(0);
-
   try {
     const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
     const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
