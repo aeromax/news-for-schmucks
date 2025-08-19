@@ -1,7 +1,5 @@
 node_modules
 .env
-dist/public/audio.mp3
-dist/public/transcript.json
+audio.mp3
+transcript.json
 setup.sh
-public/audio.mp3
-public/transcript.json
