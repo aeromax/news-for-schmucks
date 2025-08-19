@@ -7,11 +7,10 @@ import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import { shouldSkipJob, saveJobCache } from "./services/cache.js";
 import { env } from "./utils/env.js";
-import path from "path";
-import { fileURLToPath } from "url";
 import { getAudioDuration } from "./services/getDuration.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+
 const isTest = process.argv.includes("--test");
 
 (async () => {
@@ -27,7 +26,7 @@ const isTest = process.argv.includes("--test");
         const duration = await getAudioDuration("./test/audio.mp3");
         cleanText.duration = duration;
         const updatedTranscript = cleanText;
-        await saveFiles(__dirname, updatedTranscript, speech);
+        await saveFiles("./", updatedTranscript, speech);
 
         if (!isTest) {
             await saveJobCache({ transcript: summary, duration });
