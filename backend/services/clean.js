@@ -21,14 +21,14 @@ export function clean(input) {
 
     // 🔹 Profanity replacements
     const replacements = {
-        'f[*]*k': 'fuck',
-        's[*]*t': 'shit',
-        '[*]ss': 'ass',
-        'b[*]tch': 'bitch',
-        'd[*]mn': 'damn',
-        'm[*]therf[*]ker': 'motherfucker',
-        'd[*]ck': 'dick',
-        'h[*]ll': 'hell'
+        // 'f[*]*k': 'fuck',
+        // 's[*]*t': 'shit',
+        // '[*]ss': 'ass',
+        // 'b[*]tch': 'bitch',
+        // 'd[*]mn': 'damn',
+        // 'm[*]therf[*]ker': 'motherfucker',
+        // 'd[*]ck': 'dick',
+        // 'h[*]ll': 'hell'
     };
 
     for (let pattern in replacements) {
