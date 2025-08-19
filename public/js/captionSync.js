@@ -4,7 +4,7 @@
 async function loadCaptionsFromJSON(jsonUrl) {
   const res = await fetch(jsonUrl);
   const data = (await res.json());
-  const duration = parseFloat(data.captions.duration);
+  const duration = parseFloat(data.captions.duration) * .4;
   const captions = Array.isArray(data.captions.text) ? data.captions.text : [];
   if (!duration || captions.length === 0) {
     console.error('❌ Invalid structure. Duration or captions missing.', { duration, captions });
@@ -19,7 +19,7 @@ async function loadCaptionsFromJSON(jsonUrl) {
   
   // We'll apply animation *after* layout measurement
   scrollDiv.style.visibility = 'hidden';
-  scrollDiv.innerHTML = captions.map(line => `<div>${line}</div>`).join('');
+  scrollDiv.innerHTML = captions.map(line => `<div class="scroll-div-part">${formatLine(line)}</div>`).join('');
 
   container.innerHTML = '';
   container.appendChild(scrollDiv);
@@ -48,3 +48,8 @@ async function loadCaptionsFromJSON(jsonUrl) {
 document.addEventListener('DOMContentLoaded', () => {
   loadCaptionsFromJSON('./transcript.json');
 });
+
+function formatLine(line) {
+  // Replace **something** with <strong>something</strong>
+  return line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+}
