@@ -5,10 +5,8 @@ import { summarizeNews } from "./services/summarizeNews.js";
 import { clean } from "./services/clean.js";
 import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
-import { shouldSkipJob, saveJobCache } from "./services/cache.js";
 import { env } from "./utils/env.js";
 import { getAudioDuration } from "./services/getDuration.js";
-import { shouldSkipJob, saveJobCache } from "./dist/services/cache.js";
 
 
 const isTest = process.argv.includes("--test");
@@ -28,14 +26,7 @@ const isTest = process.argv.includes("--test");
     const updatedTranscript = cleanText;
     await saveFiles("./", updatedTranscript, speech);
 
-    if (!isTest) {
-      await saveJobCache({
-        transcript: /* could be string OR { text: [...] } */,
-        duration,                                // number or null
-        audioPath: "dist/public/audio.mp3",      // adjust if needed
-        extra: { linesCount: Array.isArray(lines) ? lines.length : undefined }
-      });
-    }
+
 
     console.log("✅ All done! Files written to /public.");
   } catch (err) {
