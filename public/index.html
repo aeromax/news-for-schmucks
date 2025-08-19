@@ -13,7 +13,8 @@
   <div class="container palette-1">
     <div class="content-wrapper">
       <div class="headline-wrapper">
-        <h1><div id="headline">News for <span style="color:#ff3083;">Schmucks.</span></div>
+        <h1>
+          <div id="headline">News for <span style="color:#ff3083;">Schmucks.</span></div>
           <div class="subhead">some news-ish stories for <span id="date"></span></div>
         </h1>
       </div>
@@ -31,20 +32,31 @@
               <rect x="30" y="15" width="12" height="70" rx="2" />
               <rect x="58" y="15" width="12" height="70" rx="2" />
             </g>
-            <circle class="progress-track" cx="50" cy="50" r="60" />
-            <circle class="progress-ring" cx="50" cy="50" r="60" />
           </svg>
         </div>
+
       </div>
-      <div id="caption-box"></div>
+      <!-- Progress bar -->
+      <div class="progress-row">
+        <div id="progressWrap" class="progress-wrap" role="slider" aria-label="Playback progress" aria-valuemin="0"
+          aria-valuemax="100" aria-valuenow="0" tabindex="0">
+          <div class="progress-track"></div>
+          <div class="progress-fill" id="progressFill"></div>
+          <div class="progress-head" id="progressHead"></div>
+        </div>
+        <div id="timeCounter" class="time-counter" aria-live="polite">00:00</div>
+
+      </div>
+
+      <div id="caption-box">
+        <div id="captionScroll" class="caption-scroll" aria-live="polite"></div>
+      </div>
 
     </div>
   </div>
 
-  <audio id="audio" src="/audio.mp3?nocache=${Date.now()}"
-    preload="auto" playsinline crossorigin="anonymous">
-    <track src="transcript.json" kind="subtitles" srclang="en"
-      label="English Subtitles" default>
+  <audio id="audio" src="/audio.mp3?nocache=${Date.now()}" preload="auto" playsinline crossorigin="anonymous">
+    <track src="transcript.json" kind="subtitles" srclang="en" label="English Subtitles" default>
   </audio>
 
   <script src="js/blobAnimation.js"></script>

@@ -94,19 +94,21 @@ body {
 #caption-box::after {
   content: "";
   position: absolute;
-  left: 0; right: 0;
-  height: 40px;         
-  pointer-events: none; 
-  z-index: 2;           
+  left: 0;
+  right: 0;
+  height: 40px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 #caption-box::before {
   top: 0;
-  background: linear-gradient(to bottom, rgba(5, 5, 21,0.8), rgba(0,0,0,0));
+  background: linear-gradient(to bottom, rgba(5, 5, 21, 0.8), rgba(0, 0, 0, 0));
 }
+
 #caption-box::after {
   bottom: 0;
-  background: linear-gradient(to top, rgba(5, 5, 21,0.8), rgba(0,0,0,0));
+  background: linear-gradient(to top, rgba(5, 5, 21, 0.8), rgba(0, 0, 0, 0));
 }
 
 #caption-scroll {
@@ -117,12 +119,16 @@ body {
   white-space: pre-line;
   z-index: 1;
   background: transparent;
-  
-    animation-play-state: paused;
+
+  animation-play-state: paused;
 }
 
-.scroll-div-part{
+#caption-scroll div {
   margin: 1rem 0;
+}
+
+#caption-scroll h2 {
+  font-size: inherit;
 }
 
 @keyframes scroll-up {
@@ -278,32 +284,6 @@ body {
   /* filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.6)); */
 }
 
-#playIcon .progress-ring {
-  fill: none;
-  stroke: rgba(255, 255, 255, .85);
-  stroke-width: 10px;
-  stroke-linecap: round;
-
-  /* start at 12 o’clock */
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-
-  /* dasharray set by JS; make sure it animates smoothly */
-  transition: stroke-dashoffset 0.25s linear;
-  mix-blend-mode: screen;
-  /* keeps the glow look */
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, .75));
-}
-
-#playIcon .progress-track {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.2);
-  stroke-width: 8px;
-  /* match the foreground ring */
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
-}
-
 /* Rotate play triangle 90° CW */
 #playIcon .play-triangle {
   transform-origin: 50% 50%;
@@ -334,10 +314,111 @@ body {
   opacity: 1;
 }
 
+/* Row container constrains width and aligns items on one line */
+.progress-row {
+  width: min(720px, 90vw);
+  margin: 14px auto 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* space between bar and time */
+}
+
+/* Progress bar takes remaining width; timeCounter hugs right */
+.progress-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  height: 16px;
+  /* hit area; track is thinner */
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+
+.time-counter {
+  flex: 0 0 auto;
+  font-family: "Poppins", "Helvetica Neue", Helvetica, sans-serif;
+  text-align: center;
+  font-size: 0.95rem;
+  opacity: 0.9;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+
+  /* don’t steal drags from the bar */
+}
+
+/* Track line */
+.progress-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 6px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.05);
+}
+
+/* Filled portion */
+.progress-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  width: 0%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+/* Glowing playhead */
+.progress-head {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blob-3);
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.75),
+    0 0 24px rgba(255, 255, 255, 0.35),
+    0 0 48px rgba(255, 255, 255, 0.25);
+  transition: transform 0.06s ease;
+}
+
+.progress-wrap:hover .progress-head,
+.progress-wrap:focus-visible .progress-head {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.progress-wrap:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 3px;
+}
+
+/* Mobile: tighten spacing a bit */
+@media (max-width: 480px) {
+  .progress-row {
+    gap: 8px;
+  }
+
+  .time-counter {
+    font-size: 0.9rem;
+  }
+}
+
+
 /* ensure blobs pause when audio pauses */
 .paused-animation .blob {
   animation-play-state: paused;
 }
+
+
 
 @media (max-width: 480px) {
 
