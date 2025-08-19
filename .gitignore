@@ -3,3 +3,5 @@ node_modules
 dist/public/audio.mp3
 dist/public/transcript.json
 setup.sh
+public/audio.mp3
+public/transcript.json
