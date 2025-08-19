@@ -17,6 +17,7 @@ const isTest = process.argv.includes("--test");
   try {
     const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
     const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
+    console.log(summary);
     const cleanText = clean(summary);
     const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
     const duration = await getAudioDuration("./test/audio.mp3");
