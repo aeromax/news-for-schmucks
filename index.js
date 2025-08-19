@@ -1,16 +1,19 @@
 // snarkynews-dist/index.js
 
 import express from "express";
-import axios from "axios";
-import fs from "fs/promises";
 import cron from "node-cron";
-import FormData from "form-data";
-import path from "path";
-import { fileURLToPath } from "url";
+import { fetchHeadlines } from "./backend/services/fetchHeadlines.js";
+import { summarizeNews } from "./backend/services/summarizeNews.js";
+import { clean } from "./backend/services/clean.js";
+import { generateSpeech } from "./backend/services/speech.js";
+import { saveFiles } from "./backend/services/saveFiles.js";
+import { env } from "./backend/utils/env.js";
+import { getAudioDuration } from "./backend/services/getDuration.js";
+
+const isTest = process.argv.includes("--test");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ENV vars you’ll need to set on Render:
 const NEWS_API_KEY = process.env.NEWS_API_KEY;
@@ -20,66 +23,41 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 cron.schedule("0 1 * * *", async () => {
   console.log("[Cron] Running daily headline-to-audio job");
   try {
-    // 1. Get news headlines
-    const news = await axios.get(
-      `https://newsapi.org/v2/top-headlines?source=bbc_news&country=us&pageSize=15&apiKey=${NEWS_API_KEY}`
-    );
-
-    const urls = news.data.articles.filter(a => a.content).map(a => a.url).join(",");
-
-    // 2. Generate snarky commentary
-    const summary = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "You are the world's most angry..." },
-          { role: "user", content: `Extract and summarize the text from these article links: ${urls}. Provide quick commentary on 10 of them...` }
-        ],
-        temperature: 1,
-        top_p: 1
-      },
-      {
-        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` }
-      }
-    );
-
-    const text = summary.data.choices[0].message.content;
-
-    // 3. Replace censored curse words
-    const uncensored = text.replace(/f[*]*k/gi, "fuck").replace(/s[*]*t/gi, "shit") /* etc */;
-
-    // 4. Send to OpenAI TTS
-    const ttsRes = await axios.post(
-      "https://api.openai.com/v1/audio/speech",
-      {
-        model: "gpt-4o-mini-tts",
-        voice: "verse",
-        input: uncensored,
-        response_format: "mp3",
-        instructions: "Harvey Fierstein style description..."
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        responseType: "arraybuffer"
-      }
-    );
-
-    // 5. Write files
-    await fs.writeFile(path.join(__dirname, "public/audio.mp3"), ttsRes.data);
-    await fs.writeFile(path.join(__dirname, "public/transcript.json"), JSON.stringify({ text: uncensored }, null, 2));
-
-    console.log("[Cron] Job complete: audio and transcript saved.");
-  } catch (err) {
-    console.error("[Cron Error]", err.response?.data || err.message);
+    const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
+    const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
+    console.log(summary);
+    const cleanText = clean(summary);
+    const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
+    const duration = await getAudioDuration("./test/audio.mp3");
+    cleanText.duration = duration;
+    const updatedTranscript = cleanText;
+    await saveFiles("./", updatedTranscript, speech);
+    console.log("✅ All done! Files written to /public.");
+  }
+  catch (err) {
+    // console.error("❌ Error during job:", err.response?.data || err.stack);
+    showErr(err);
+    process.exit(1);
   }
 });
 
-app.get("/status", (req, res) => res.send("SnarkyNews dist running."));
+function showErr(err) {
+  // Prefer full stack if available
+  if (err?.stack) {
+    console.error(err.stack);
+    return;
+  }
 
-app.use("/public", express.static(path.join(__dirname, "public")));
-
-app.listen(PORT, () => console.log(`[Server] Listening on port ${PORT}`));
+  // Axios error with possible buffer body
+  const data = err?.response?.data ?? err;
+  if (Buffer.isBuffer(data)) {
+    const text = data.toString("utf8");
+    try {
+      console.error("[HTTP Error JSON]", JSON.parse(text));
+    } catch {
+      console.error("[HTTP Error Text]", text);
+    }
+  } else {
+    console.error("[Error]", data);
+  }
+}
