@@ -16,7 +16,7 @@ body {
 .content-wrapper {
   height: 90%;
   width: 100%;
-  max-width: 800px;
+  max-width: 700px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -103,32 +103,44 @@ body {
 
 #caption-box::before {
   top: 0;
-  background: linear-gradient(to bottom, rgba(5, 5, 21, 0.8), rgba(0, 0, 0, 0));
+  background: linear-gradient(to bottom, rgba(5, 5, 21, 1), rgba(0, 0, 0, 0));
 }
 
 #caption-box::after {
   bottom: 0;
-  background: linear-gradient(to top, rgba(5, 5, 21, 0.8), rgba(0, 0, 0, 0));
+  background: linear-gradient(to top, rgba(5, 5, 21, 1), rgba(0, 0, 0, 0));
 }
 
 #caption-scroll {
   position: absolute;
+  top: 90%;
   left: 0;
-  top: 50%;
   width: 100%;
   white-space: pre-line;
   z-index: 1;
   background: transparent;
-
   animation-play-state: paused;
+  transition: all 2s;
+  color: #666;
 }
 
-#caption-scroll div {
-  margin: 1rem 0;
+#caption-scroll[data-faded-in="true"] {
+  opacity: 1;
 }
 
-#caption-scroll h2 {
-  font-size: inherit;
+#caption-scroll[data-state="paused"]:not([data-faded-in="true"]) {
+  opacity: 0;
+}
+
+#caption-scroll div span {
+  display: block;
+  margin: 2rem 0 0 0;
+}
+
+#caption-scroll .bold-caption {
+  font-weight: 600;
+  color: white;
+
 }
 
 @keyframes scroll-up {
