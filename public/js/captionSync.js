@@ -1,10 +1,11 @@
-
-// captionSync.js — reset version to load captions and duration from JSON file
+// captionSync.js — refactored to use data-state instead of animationPlayState directly
+const scrollSpeedFactor = 0.5;
+let duration;
 
 async function loadCaptionsFromJSON(jsonUrl) {
   const res = await fetch(jsonUrl);
-  const data = (await res.json());
-  const duration = parseFloat(data.captions.duration);
+  const data = await res.json();
+  duration = parseFloat(data.captions.duration);
   const captions = Array.isArray(data.captions.text) ? data.captions.text : [];
   if (!duration || captions.length === 0) {
     console.error('❌ Invalid structure. Duration or captions missing.', { duration, captions });
@@ -17,29 +18,37 @@ async function loadCaptionsFromJSON(jsonUrl) {
   let scrollDiv = document.createElement('div');
   scrollDiv.id = 'caption-scroll';
 
-  // We'll apply animation *after* layout measurement
   scrollDiv.style.visibility = 'hidden';
-  scrollDiv.innerHTML = captions.map(line => `<div>${line}</div>`).join('');
+  scrollDiv.innerHTML = captions.map(line => `<div>${formatBoldCaptions(line)}</div>`).join('');
 
   container.innerHTML = '';
   container.appendChild(scrollDiv);
 
-  // Wait for layout pass to calculate full height, then animate
+  // Observer to reflect data-state to animationPlayState
+  const updateAnimState = () => {
+    const state = scrollDiv.getAttribute('data-state');
+    scrollDiv.style.animationPlayState = state === 'playing' ? 'running' : 'paused';
+  };
+  const observer = new MutationObserver(updateAnimState);
+  observer.observe(scrollDiv, { attributes: true, attributeFilter: ['data-state'] });
+
   requestAnimationFrame(() => {
-    const scrollHeight = scrollDiv.offsetHeight;
-    scrollDiv.style.top = `${container.offsetHeight}px`;
     scrollDiv.style.width = '100%';
-    scrollDiv.style.animation = `scroll-up ${duration}s linear forwards`;
-    scrollDiv.style.animationPlayState = 'paused';
+    scrollDiv.style.animation = `scroll-up ${duration * scrollSpeedFactor}s linear forwards`;
+    scrollDiv.setAttribute('data-state', 'paused');
     scrollDiv.style.visibility = 'visible';
 
     const audio = document.querySelector('audio');
     if (audio) {
       audio.addEventListener('play', () => {
-        scrollDiv.style.animationPlayState = 'running';
+        scrollDiv.setAttribute('data-state', 'playing');
+        if (!scrollDiv.hasAttribute('data-faded-in')) {
+          scrollDiv.setAttribute('data-faded-in', 'true');
+        }
       });
+
       audio.addEventListener('pause', () => {
-        scrollDiv.style.animationPlayState = 'paused';
+        scrollDiv.setAttribute('data-state', 'paused');
       });
     }
   });
@@ -48,8 +57,8 @@ async function loadCaptionsFromJSON(jsonUrl) {
 document.addEventListener('DOMContentLoaded', () => {
   loadCaptionsFromJSON('./transcript.json');
 });
-// === Playhead + Scrubbing ===
 
+// === Playhead + Scrubbing ===
 const wrap = document.getElementById("progressWrap");
 const fill = document.getElementById("progressFill");
 const head = document.getElementById("progressHead");
@@ -83,7 +92,7 @@ function seekToTime(t) {
   t = Math.max(0, Math.min(totalDuration, t));
   if (audio) {
     audio.currentTime = t;
-    audio.dispatchEvent(new Event('seeked')); // ensure scroll updates
+    audio.dispatchEvent(new Event('seeked'));
   }
   setProgressUI(t / totalDuration);
   setTimeCounter(t);
@@ -93,14 +102,12 @@ function seekToTime(t) {
 function updateScrollForTime(t) {
   const scrollDiv = document.getElementById("caption-scroll");
   if (!scrollDiv) return;
-  // Recalculate animation delay to sync with currentTime
-  scrollDiv.style.animationPlayState = "paused";
-  scrollDiv.style.animation = "none"; // reset
-  // Force reflow to restart animation
-  void scrollDiv.offsetWidth;
-  scrollDiv.style.animation = `scroll-up ${totalDuration}s linear forwards`;
+  scrollDiv.setAttribute('data-state', 'paused');
+  scrollDiv.style.animation = 'none';
+  void scrollDiv.offsetWidth; // force reflow
+  scrollDiv.style.animation = `scroll-up ${duration * scrollSpeedFactor}s linear forwards`;
   scrollDiv.style.animationDelay = `-${t}s`;
-  scrollDiv.style.animationPlayState = audio?.paused ? "paused" : "running";
+  scrollDiv.setAttribute('data-state', audio?.paused ? 'paused' : 'playing');
 }
 
 function timeFromClientX(clientX) {
@@ -110,7 +117,6 @@ function timeFromClientX(clientX) {
   return pct * totalDuration;
 }
 
-/* === Audio sync === */
 if (audio) {
   audio.addEventListener("loadedmetadata", () => {
     totalDuration = isFinite(audio.duration) ? audio.duration : 0;
@@ -126,7 +132,6 @@ if (audio) {
   });
 }
 
-/* === Scrubbing events === */
 if (wrap) {
   const stopDragging = () => {
     if (!isDragging) return;
@@ -149,7 +154,6 @@ if (wrap) {
     seekToTime(timeFromClientX(e.clientX));
   });
 
-  // Keyboard support
   wrap.addEventListener("keydown", (e) => {
     if (!audio) return;
     const step = 5;
@@ -163,6 +167,6 @@ if (wrap) {
       seekToTime(totalDuration);
     }
   });
+
 }
-
-
+const formatBoldCaptions = (text) => text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');
