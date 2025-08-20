@@ -2,6 +2,8 @@
 const scrollSpeedFactor = 0.5;
 let duration;
 
+const formatBoldCaptions = (text) => text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');
+
 async function loadCaptionsFromJSON(jsonUrl) {
   const res = await fetch(jsonUrl);
   const data = await res.json();
@@ -59,11 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // === Playhead + Scrubbing ===
-const wrap = document.getElementById("progressWrap");
-const fill = document.getElementById("progressFill");
-const head = document.getElementById("progressHead");
 const timeCounter = document.getElementById("timeCounter");
 const audio = document.querySelector("audio");
+const wrap = document.querySelector("progress-ring-container");
+const fill = document.querySelector("progress-track");
+const head = document.querySelector("progress-ring");
 
 let isDragging = false;
 let totalDuration = 0;
@@ -86,7 +88,9 @@ function setProgressUI(pct) {
   if (fill) fill.style.width = `${pct * 100}%`;
   if (head) head.style.left = `${pct * 100}%`;
   if (wrap) wrap.setAttribute("aria-valuenow", Math.round(pct * 100));
+
 }
+
 
 function seekToTime(t) {
   t = Math.max(0, Math.min(totalDuration, t));
@@ -169,4 +173,3 @@ if (wrap) {
   });
 
 }
-const formatBoldCaptions = (text) => text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');

@@ -179,11 +179,11 @@ body {
   transform-origin: 50% 50%;
   transform: translate(-50%, -50%) scale(var(--scale));
   border-radius: 50%;
-  background: radial-gradient(circle at center,
+  /* background: radial-gradient(circle at center,
       transparent 0%,
       color-mix(in srgb, var(--blob-color) 5%, transparent) 85%,
       color-mix(in srgb, var(--blob-color) 90%, transparent) 95%,
-      transparent 100%);
+      transparent 100%); */
   border: var(--border-thickness) solid var(--blob-color);
   mix-blend-mode: color-dodge;
   filter: brightness(1.8) blur(3px) drop-shadow(0 0 12px hsl(var(--h) var(--s) var(--l) / 0.8));
@@ -326,27 +326,7 @@ body {
   opacity: 1;
 }
 
-/* Row container constrains width and aligns items on one line */
-.progress-row {
-  width: min(720px, 90vw);
-  margin: 14px auto 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  /* space between bar and time */
-}
 
-/* Progress bar takes remaining width; timeCounter hugs right */
-.progress-wrap {
-  position: relative;
-  flex: 1 1 auto;
-  height: 16px;
-  /* hit area; track is thinner */
-  cursor: pointer;
-  touch-action: none;
-  user-select: none;
-  outline: none;
-}
 
 .time-counter {
   flex: 0 0 auto;
@@ -357,67 +337,50 @@ body {
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
-
-  /* don’t steal drags from the bar */
 }
 
-/* Track line */
-.progress-track {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 6px;
-  transform: translateY(-50%);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.05);
-}
 
-/* Filled portion */
-.progress-fill {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  height: 4px;
-  transform: translateY(-50%);
-  border-radius: 999px;
-  width: 0%;
-  background: currentColor;
-  opacity: 0.5;
-}
+/* === CIRCULAR PROGRESS RING === */
 
-/* Glowing playhead */
-.progress-head {
+#progress-ring-container {
   position: absolute;
   top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
   transform: translate(-50%, -50%);
-  width: 18px;
-  height: 18px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.progress-track,
+.progress-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  background: var(--blob-3);
-  box-shadow:
-    0 0 10px rgba(255, 255, 255, 0.75),
-    0 0 24px rgba(255, 255, 255, 0.35),
-    0 0 48px rgba(255, 255, 255, 0.25);
-  transition: transform 0.06s ease;
+  mask-image: radial-gradient(circle, transparent 90px, black 61px);
+  -webkit-mask-image: radial-gradient(circle, transparent 90px, black 61px);
+  transform: rotate(5deg);
 }
 
-.progress-wrap:hover .progress-head,
-.progress-wrap:focus-visible .progress-head {
-  transform: translate(-50%, -50%) scale(1.08);
+/* Static track behind the progress arc */
+.progress-track {
+  background: conic-gradient(var(--bg-0) 0deg 350deg, transparent 350deg 360deg);
+  z-index: 1;
 }
 
-.progress-wrap:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.6);
-  outline-offset: 3px;
+/* Foreground progress arc */
+.progress-ring {
+  background: conic-gradient(#fff 0deg 180deg, transparent 180deg 360deg);
+  transition: background 0.2s linear;
+  z-index: 2;
 }
+
+
 
 /* Mobile: tighten spacing a bit */
 @media (max-width: 480px) {
-  .progress-row {
-    gap: 8px;
-  }
 
   .time-counter {
     font-size: 0.9rem;
@@ -453,7 +416,6 @@ body {
     padding: 0.5rem 0.75rem;
   }
 
-  /* play button & progress ring scale down */
   #playIcon {
     width: 64px;
     height: 64px;
