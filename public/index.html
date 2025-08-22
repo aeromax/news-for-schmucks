@@ -34,25 +34,21 @@
             </g>
           </svg>
         </div>
-
-      </div>
-      <!-- Progress bar -->
-      <div class="progress-row">
-        <div id="progressWrap" class="progress-wrap" role="slider" aria-label="Playback progress" aria-valuemin="0"
-          aria-valuemax="100" aria-valuenow="0" tabindex="0">
-          <div class="progress-track"></div>
-          <div class="progress-fill" id="progressFill"></div>
-          <div class="progress-head" id="progressHead"></div>
+        <!-- Progress bar -->
+        <div id="progress-ring-container">
+          <div class="progress-track"></div> <!-- static background ring -->
+          <div class="progress-ring"></div> <!-- animated progress ring -->
         </div>
-        <div id="timeCounter" class="time-counter" aria-live="polite">00:00</div>
-
       </div>
-
+      <div id="timeCounter" class="time-counter" aria-live="polite">00:00</div>
       <div id="caption-box">
         <div id="captionScroll" class="caption-scroll" aria-live="polite"></div>
       </div>
-
     </div>
+
+
+
+  </div>
   </div>
 
   <audio id="audio" src="/audio.mp3?nocache=${Date.now()}" preload="auto" playsinline crossorigin="anonymous">
