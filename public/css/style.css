@@ -113,7 +113,7 @@ body {
 
 #caption-scroll {
   position: absolute;
-  top: 90%;
+  top: 100%;
   left: 0;
   width: 100%;
   white-space: pre-line;
@@ -122,14 +122,6 @@ body {
   animation-play-state: paused;
   transition: all 2s;
   color: #999;
-}
-
-#caption-scroll[data-faded-in="true"] {
-  opacity: 1;
-}
-
-#caption-scroll[data-state="paused"]:not([data-faded-in="true"]) {
-  opacity: 0;
 }
 
 #caption-scroll div span {

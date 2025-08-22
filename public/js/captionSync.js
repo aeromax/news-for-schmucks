@@ -1,6 +1,9 @@
 // Reverted version: captionSync.js with working circular glow progress ring
 const scrollSpeedFactor = 0.5;
-let duration;
+const audio = document.querySelector("audio");
+const timeCounter = document.getElementById("timeCounter");
+const ring = document.querySelector(".progress-ring");
+let totalDuration = 0;
 
 const formatBoldCaptions = (text) => text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');
 
@@ -45,23 +48,20 @@ async function loadCaptionsFromJSON(jsonUrl) {
     scrollDiv.setAttribute('data-state', 'paused');
     scrollDiv.style.visibility = 'visible';
 
-    const audio = document.querySelector('audio');
+
     if (audio) {
       audio.addEventListener('play', () => {
+        // only toggle animation state — do NOT change visibility/opacity flags
         scrollDiv.setAttribute('data-state', 'playing');
       });
       audio.addEventListener('pause', () => {
+        // pause the scrolling animation but do NOT hide the captions
         scrollDiv.setAttribute('data-state', 'paused');
       });
     }
   });
 }
 
-const audio = document.querySelector("audio");
-const timeCounter = document.getElementById("timeCounter");
-const ring = document.querySelector(".progress-ring");
-
-let totalDuration = 0;
 
 function fmtTime(seconds) {
   seconds = Math.max(0, Math.floor(seconds));
