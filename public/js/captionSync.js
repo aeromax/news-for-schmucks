@@ -223,48 +223,6 @@ if (audio) {
     onPointerMove(e.clientX, e.clientY, true);
   }
 
-  // === Keyboard support for the ring (replace any older onKeyDown) ===
-  // Global shortcuts: left/right to seek, space to play/pause — but only when not typing
-  (function globalShortcuts() {
-    const audioEl = document.querySelector('audio');
-    if (!audioEl) return;
-
-    function isTyping() {
-      const el = document.activeElement;
-      return !!el && (
-        el.tagName === 'INPUT' ||
-        el.tagName === 'TEXTAREA' ||
-        el.isContentEditable
-      );
-    }
-
-    window.addEventListener('keydown', (ev) => {
-      if (isTyping()) return; // do not hijack typed input
-
-      // space toggles play/pause — avoid preventing default for checkboxes or buttons
-      if (ev.code === 'Space') {
-        ev.preventDefault();
-        if (audioEl.paused) audioEl.play();
-        else audioEl.pause();
-        return;
-      }
-
-      // arrows for seek
-      if (ev.key === '[' || ev.key === ']') {
-        ev.preventDefault();
-        const step = ev.shiftKey ? 10 : 2; // seconds
-        if (ev.key === ']') audioEl.currentTime = Math.min(audioEl.duration || Infinity, audioEl.currentTime + step);
-        else audioEl.currentTime = Math.max(0, audioEl.currentTime - step);
-        // update UI (if you use setProgressUI/seeking helpers)
-        const pct = (audioEl.currentTime || 0) / (audioEl.duration || totalDuration || 1);
-        setProgressUI(pct);
-        setTimeCounter(audioEl.currentTime || 0);
-      }
-    });
-  })();
-
-
-
   // attach listeners
   container.addEventListener('mousedown', onMouseDown);
   container.addEventListener('touchstart', onTouchStart, { passive: false });
@@ -288,5 +246,59 @@ if (audio) {
 
   // ensure touch-action none via CSS ideally, but also prevent some defaults
   container.style.touchAction = 'none';
+})();
+
+// Global shortcuts: [ and ] to seek exactly 10 seconds (no Shift behavior)
+(function globalShortcutsSeekBracketsSimple() {
+  const audioEl = document.querySelector('audio');
+  if (!audioEl) return;
+
+  function isTyping() {
+    const el = document.activeElement;
+    return !!el && (
+      el.tagName === 'INPUT' ||
+      el.tagName === 'TEXTAREA' ||
+      el.isContentEditable
+    );
+  }
+
+  window.addEventListener('keydown', (ev) => {
+    if (isTyping()) return; // don't hijack typing fields
+
+    // Use physical key code for reliability
+    const code = ev.code; // 'BracketLeft' or 'BracketRight'
+    if (code !== 'BracketLeft' && code !== 'BracketRight') return;
+
+    ev.preventDefault();
+
+    // ensure totalDuration is available (fallback to audio.duration)
+    if ((!isFinite(totalDuration) || totalDuration <= 0) && isFinite(audioEl.duration)) {
+      totalDuration = audioEl.duration;
+    }
+
+    const amount = 10; // seconds, always
+
+    let newTime = (audioEl.currentTime || 0) + (code === 'BracketRight' ? amount : -amount);
+
+    // clamp to [0, max]
+    const maxT = totalDuration && totalDuration > 0 ? totalDuration : (isFinite(audioEl.duration) ? audioEl.duration : Infinity);
+    newTime = Math.max(0, Math.min(newTime, maxT));
+
+    // perform seek
+    audioEl.currentTime = newTime;
+
+    // update visuals + captions
+    const pct = (maxT && maxT > 0) ? (newTime / maxT) : 0;
+    setProgressUI(pct);
+    setTimeCounter(newTime);
+    if (typeof updateScrollForTime === 'function') updateScrollForTime(newTime);
+
+    // update aria value if present
+    const ringContainer = document.getElementById('progress-ring-container');
+    if (ringContainer) ringContainer.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
+
+    // small debug (remove after confirm)
+    console.log(`[Shortcuts] ${code} -> seek to ${newTime}s (pct ${Math.round(pct * 100)}%)`);
+  });
 })();
 
