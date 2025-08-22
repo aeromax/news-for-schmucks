@@ -10,14 +10,17 @@
 </head>
 
 <body>
-  <div class="container palette-1">
+  <div class="container">
     <div class="content-wrapper">
       <div class="headline-wrapper">
-        <h1>
-          <div id="headline">News for <span style="color:#ff3083;">Schmucks.</span></div>
-          <div class="subhead">some news-ish stories for <span id="date"></span></div>
-        </h1>
+        <div id="headline">
+          <h1>News for <span style="color:#ff3083;">Schmucks.</span></h1>
+        </div>
+        <div class="subhead">some news-ish stories for <span id="date"></span></div>
       </div>
+      <div class="play-instructions small-text" aria-live="polite">Use [] and ] to skip back and forth.
+      </div>
+      <!-- Blobs -->
       <div class="blobs" id="blobs">
         <div class="blob blob-1"></div>
         <div class="blob blob-2"></div>
@@ -40,7 +43,13 @@
           <div class="progress-ring"></div> <!-- animated progress ring -->
         </div>
       </div>
-      <div id="timeCounter" class="time-counter" aria-live="polite">00:00</div>
+      <!-- Info panel -->
+      <div class="info-panel">
+        <div class="time-wrapper">
+          <div id="timeCounter" class="time-counter small-text" aria-live="polite">00:00</div>
+        </div>
+      </div>
+      <!-- Captions -->
       <div id="caption-box">
         <div id="captionScroll" class="caption-scroll" aria-live="polite"></div>
       </div>
