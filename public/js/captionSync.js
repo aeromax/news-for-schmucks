@@ -73,7 +73,7 @@ function fmtTime(seconds) {
 function setTimeCounter(t) {
   if (!timeCounter) return;
   const remain = Math.max(0, totalDuration - t);
-  timeCounter.textContent = fmtTime(remain);
+  timeCounter.textContent = `Bullshit remaining: ${fmtTime(remain)}`;
 }
 
 function setProgressUI(pct) {

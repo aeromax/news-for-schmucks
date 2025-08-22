@@ -121,7 +121,7 @@ body {
   background: transparent;
   animation-play-state: paused;
   transition: all 2s;
-  color: #666;
+  color: #999;
 }
 
 #caption-scroll[data-faded-in="true"] {
@@ -139,7 +139,7 @@ body {
 
 #caption-scroll .bold-caption {
   font-weight: 600;
-  color: white;
+  color: var(--blob-4);
 
 }
 
@@ -337,6 +337,7 @@ body {
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
+  color: #999;
 }
 
 
