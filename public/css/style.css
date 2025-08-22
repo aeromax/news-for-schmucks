@@ -349,8 +349,20 @@ body {
   width: 200px;
   height: 200px;
   transform: translate(-50%, -50%);
-  pointer-events: none;
   z-index: 3;
+}
+
+/* make ring interactive and show pointer cursor */
+#progress-ring-container {
+  cursor: pointer;
+  touch-action: none;
+  /* prefer this alongside JS passive:false handlers */
+}
+
+/* make ring focusable look */
+#progress-ring-container:focus {
+  outline: none;
+  box-shadow: 0 0 0 6px rgba(255, 48, 131, 0.08);
 }
 
 .progress-track,
