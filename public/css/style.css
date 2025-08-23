@@ -332,71 +332,120 @@ body {
   padding: .5rem 0;
 }
 
-.time-wrapper {
+
+/* Player controls layout */
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 8px 0;
+}
+
+/* Play icon container */
+.play {
+  width: 52px;
+  height: 52px;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.info-panel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+/* Progress bar wrapper */
+.progress-wrap {
   position: relative;
-  padding: .5rem 1rem;
-  border-radius: 50px;
-  z-index: 0;
-  overflow: hidden;
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
 }
 
-.time-wrapper:before {
-  content: "";
+/* Filled portion */
+.progress-fill {
   position: absolute;
-  inset: 0;
-  background: var(--light-gray);
-  opacity: 0.2;
-  z-index: -1;
-  pointer-events: none;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffffff, #ff3083 60%);
+  box-shadow: 0 0 8px rgba(255, 48, 131, 0.12);
+  transition: width 0.08s linear;
+  touch-action: none;
 }
 
-/* === CIRCULAR PROGRESS RING === */
-
-#progress-ring-container {
+/* Round draggable head */
+.progress-head {
   position: absolute;
   top: 50%;
-  left: 50%;
-  width: 200px;
-  height: 200px;
+  left: 0%;
   transform: translate(-50%, -50%);
-  z-index: 3;
-}
-
-/* make ring interactive and show pointer cursor */
-#progress-ring-container {
-  cursor: pointer;
-  touch-action: none;
-  /* prefer this alongside JS passive:false handlers */
-}
-
-/* make ring focusable look */
-#progress-ring-container:focus {
-  outline: none;
-  box-shadow: 0 0 0 6px rgba(255, 48, 131, 0.08);
-}
-
-.progress-track,
-.progress-ring {
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  mask-image: radial-gradient(circle, transparent 90px, black 61px);
-  -webkit-mask-image: radial-gradient(circle, transparent 90px, black 61px);
-  transform: rotate(5deg);
+  background: #fff;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35), 0 0 8px rgba(255, 48, 131, 0.12);
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  cursor: grab;
+  z-index: 6;
+  touch-action: none;
+  transition: transform 0.06s linear;
 }
 
-/* Static track behind the progress arc */
-.progress-track {
-  background: conic-gradient(var(--bg-0) 0deg 350deg, transparent 350deg 360deg);
-  z-index: 1;
+/* while dragging */
+.progress-head:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.05);
 }
 
-/* Foreground progress arc */
-.progress-ring {
-  background: conic-gradient(#fff 0deg 180deg, transparent 180deg 360deg);
-  transition: background 0.2s linear;
-  z-index: 2;
+/* keyboard focus ring */
+.progress-head:focus {
+  outline: none;
+  box-shadow: 0 0 0 6px rgba(255, 48, 131, 0.08), 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* Timer text */
+#time-counter {
+  font-family: inherit;
+  font-size: 14px;
+  color: #fff;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Small-screen tweaks */
+@media (max-width: 480px) {
+  .play {
+    width: 44px;
+    height: 44px;
+  }
+
+  .progress-wrap {
+    height: 6px;
+  }
+
+  .progress-head {
+    width: 14px;
+    height: 14px;
+  }
+
+  #time-counter {
+    font-size: 12px;
+  }
 }
 
 
