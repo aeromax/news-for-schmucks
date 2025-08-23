@@ -1,20 +1,25 @@
-// Reverted version: captionSync.js with working circular glow progress ring
+
 const scrollSpeedFactor = 0.5;
+let duration;
 const audio = document.querySelector("audio");
-const timeCounter = document.getElementById("timeCounter");
-const ring = document.querySelector(".progress-ring");
+const timeCounter = document.getElementById("time-counter");
 let totalDuration = 0;
+
+
+
 
 const formatBoldCaptions = (text) => text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');
 
 document.addEventListener('DOMContentLoaded', () => {
   loadCaptionsFromJSON('./transcript.json');
+  initLinearProgress();
 });
 
 async function loadCaptionsFromJSON(jsonUrl) {
   const res = await fetch(jsonUrl);
   const data = await res.json();
   duration = parseFloat(data.captions.duration);
+  timeCounter.textContent = `${fmtTime(duration)}`;
   const captions = Array.isArray(data.captions.text) ? data.captions.text : [];
   if (!duration || captions.length === 0) {
     console.error('❌ Invalid structure. Duration or captions missing.', { duration, captions });
@@ -48,14 +53,11 @@ async function loadCaptionsFromJSON(jsonUrl) {
     scrollDiv.setAttribute('data-state', 'paused');
     scrollDiv.style.visibility = 'visible';
 
-
     if (audio) {
       audio.addEventListener('play', () => {
-        // only toggle animation state — do NOT change visibility/opacity flags
         scrollDiv.setAttribute('data-state', 'playing');
       });
       audio.addEventListener('pause', () => {
-        // pause the scrolling animation but do NOT hide the captions
         scrollDiv.setAttribute('data-state', 'paused');
       });
     }
@@ -72,32 +74,48 @@ function fmtTime(seconds) {
 
 function setTimeCounter(t) {
   if (!timeCounter) return;
-  const remain = Math.max(0, totalDuration - t);
-  timeCounter.textContent = `Bullshit remaining: ${fmtTime(remain)}`;
+  const remain = Math.max(0, (totalDuration || audio?.duration || 0) - t);
+  timeCounter.textContent = `${fmtTime(remain)}`;
 }
 
+
 function setProgressUI(pct) {
-  pct = Math.max(0, Math.min(1, pct));
-  const degrees = 360 * pct;
-  if (ring) {
+  pct = Math.max(0, Math.min(1, pct || 0));
+  const pctStr = `${pct * 100}%`;
+
+  // linear elements (preferred)
+  const fill = document.getElementById("progress-fill");
+  const head = document.getElementById("progress-head");
+  const wrap = document.getElementById("progress-wrap");
+
+  if (fill) fill.style.width = pctStr;
+  if (head) head.style.left = pctStr;
+  if (wrap) wrap.setAttribute("aria-valuenow", Math.round(pct * 100));
+
+  // fallback: circular ring if still present (old markup)
+  const ring = document.querySelector(".progress-ring");
+  if (ring && !fill && !head) {
+    const degrees = 360 * pct;
     ring.style.background = `conic-gradient(#fff 0deg ${degrees}deg, transparent ${degrees}deg 360deg)`;
   }
 }
 
+
 function seekToTime(t) {
-  t = Math.max(0, Math.min(totalDuration, t));
+  const maxT = totalDuration || (audio?.duration || 0);
+  t = Math.max(0, Math.min(maxT, t));
   if (audio) {
     audio.currentTime = t;
-    audio.dispatchEvent(new Event('seeked'));
+    if (typeof updateScrollForTime === "function") updateScrollForTime(t);
   }
-  setProgressUI(t / totalDuration);
+  const pct = (maxT && maxT > 0) ? (t / maxT) : 0;
+  setProgressUI(pct);
   setTimeCounter(t);
-  updateScrollForTime(t);
 }
 
 function updateScrollForTime(t) {
   const scrollDiv = document.getElementById("caption-scroll");
-  if (!scrollDiv) return;
+  if (!scrollDiv || !isFinite(duration)) return;
   scrollDiv.setAttribute('data-state', 'paused');
   scrollDiv.style.animation = 'none';
   void scrollDiv.offsetWidth;
@@ -106,149 +124,152 @@ function updateScrollForTime(t) {
   scrollDiv.setAttribute('data-state', audio?.paused ? 'paused' : 'playing');
 }
 
+
 if (audio) {
   audio.addEventListener("loadedmetadata", () => {
     totalDuration = isFinite(audio.duration) ? audio.duration : 0;
     setTimeCounter(audio.currentTime || 0);
-    setProgressUI((audio.currentTime || 0) / totalDuration);
+    setProgressUI((audio.currentTime || 0) / (totalDuration || audio.duration || 1));
   });
 
   audio.addEventListener("timeupdate", () => {
-    const pct = (audio.currentTime || 0) / totalDuration;
+    const headEl = document.getElementById("progress-head");
+    const isUserDragging = headEl && headEl.getAttribute('data-dragging') === 'true';
+    if (isUserDragging) return;
+    const pct = (audio.currentTime || 0) / (totalDuration || audio.duration || 1);
     setProgressUI(pct);
     setTimeCounter(audio.currentTime || 0);
   });
+
 }
 
-// === Make the progress ring itself draggable (no playhead) ===
-(function attachRingScrub() {
-  const container = document.getElementById('progress-ring-container');
-  if (!container) return;
 
-  // interactive affordances
-  container.setAttribute('tabindex', '0');
-  container.setAttribute('role', 'slider');
-  container.setAttribute('aria-valuemin', '0');
-  container.setAttribute('aria-valuemax', '100');
-  container.setAttribute('aria-valuenow', '0');
+function initLinearProgress() {
+  const wrap = document.getElementById("progress-wrap");
+  const fill = document.getElementById("progress-fill");
+  const head = document.getElementById("progress-head");
 
-  // parameters must match setProgressUI logic
-  const maxDeg = 324;    // arc span
-  const startAngle = 18; // visual starting offset
+  if (!wrap || !fill || !head) {
+    console.warn("[Progress] linear UI elements not found (progress-wrap/progress-fill/progress-head)");
+    return;
+  }
 
+  // accessibility
+  wrap.setAttribute("tabindex", "0");
+  wrap.setAttribute("role", "slider");
+  wrap.setAttribute("aria-valuemin", "0");
+  wrap.setAttribute("aria-valuemax", "100");
+  head.setAttribute("tabindex", "0");
+  head.setAttribute("role", "slider");
+  head.setAttribute("aria-valuemin", "0");
+  head.setAttribute("aria-valuemax", "100");
+
+  // helpers
+  function rectToPct(clientX) {
+    const rect = wrap.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const pct = rect.width ? (x / rect.width) : 0;
+    return Math.max(0, Math.min(1, pct));
+  }
+
+  function timeFromClientX(clientX) {
+    const pct = rectToPct(clientX);
+    return pct * (totalDuration || audio?.duration || 0);
+  }
+
+  // click on bar to jump
+  wrap.addEventListener("pointerdown", (ev) => {
+    // ignore if clicking the head (head handles its own pointerdown)
+    if (ev.target === head) return;
+    const t = timeFromClientX(ev.clientX);
+    seekToTime(t);
+  });
+
+  // head dragging via pointer events with fallbacks
   let dragging = false;
 
-  function getCenter() {
-    const r = container.getBoundingClientRect();
-    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height };
-  }
-
-  function angleFromPointer(clientX, clientY) {
-    const c = getCenter();
-    const dx = clientX - c.cx;
-    const dy = clientY - c.cy;
-    // atan2 yields angle where 0 is +X; convert to degrees [0,360)
-    return (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
-  }
-
-  function angleToPct(angle) {
-    let diff = (angle - startAngle + 360) % 360;
-    if (diff > maxDeg) {
-      // clamp to nearest end
-      diff = Math.max(0, Math.min(diff, maxDeg));
-    }
-    return diff / maxDeg;
-  }
-
-  function setPctAndSeek(pct, opts = { seek: true }) {
-    pct = Math.max(0, Math.min(1, pct));
-    const t = (totalDuration || 0) * pct;
-    // update visuals using existing functions
-    setProgressUI(pct);
-    setTimeCounter(t);
-    container.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
-    if (opts.seek) seekToTime(t);
-  }
-
-  // pointer handlers
-  function onPointerMove(clientX, clientY, doSeek = true) {
-    const ang = angleFromPointer(clientX, clientY);
-    const pct = angleToPct(ang);
-    setPctAndSeek(pct, { seek: doSeek });
-  }
-
-  function startDrag(clientX, clientY) {
-    dragging = true;
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', stopDrag);
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', stopDrag);
-    onPointerMove(clientX, clientY, true);
-  }
-
-  function onMouseDown(e) {
-    e.preventDefault();
-    startDrag(e.clientX, e.clientY);
-  }
-  function onMouseMove(e) {
+  function onPointerMove(e) {
     if (!dragging) return;
+    const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+    const t = timeFromClientX(clientX);
+    seekToTime(t);
     e.preventDefault();
-    onPointerMove(e.clientX, e.clientY, true);
-  }
-  function onTouchStart(e) {
-    if (!e.touches || !e.touches[0]) return;
-    e.preventDefault();
-    const t = e.touches[0];
-    startDrag(t.clientX, t.clientY);
-  }
-  function onTouchMove(e) {
-    if (!dragging || !e.touches || !e.touches[0]) return;
-    e.preventDefault();
-    const t = e.touches[0];
-    onPointerMove(t.clientX, t.clientY, true);
   }
 
-  function stopDrag() {
+  function onPointerUp(e) {
+    if (!dragging) return;
     dragging = false;
-    document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup', stopDrag);
-    document.removeEventListener('touchmove', onTouchMove);
-    document.removeEventListener('touchend', stopDrag);
+    head.removeAttribute('data-dragging');
+    try { head.releasePointerCapture && head.releasePointerCapture(e.pointerId); } catch (err) { }
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+
+    // remove fallbacks
+    document.removeEventListener("mousemove", onPointerMove);
+    document.removeEventListener("mouseup", onPointerUp);
+    document.removeEventListener("touchmove", onPointerMove);
+    document.removeEventListener("touchend", onPointerUp);
   }
 
-  // click to jump (no drag)
-  function onClick(e) {
-    // ignore if a drag just finished; small debounce
-    if (dragging) return;
-    onPointerMove(e.clientX, e.clientY, true);
+  // Preferred pointer-based handler
+  head.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    dragging = true;
+    head.setAttribute('data-dragging', 'true');
+    try { head.setPointerCapture && head.setPointerCapture(e.pointerId); } catch (err) { }
+    document.addEventListener("pointermove", onPointerMove, { passive: false });
+    document.addEventListener("pointerup", onPointerUp);
+    // initial update so head jumps immediately with the pointer
+    onPointerMove(e);
+    e.preventDefault();
+  });
+
+  // Mouse fallback for older browsers
+  head.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    head.setAttribute('data-dragging', 'true');
+    document.addEventListener("mousemove", onPointerMove);
+    document.addEventListener("mouseup", onPointerUp);
+    onPointerMove(e);
+    e.preventDefault();
+  });
+
+  // Touch fallback
+  head.addEventListener("touchstart", (e) => {
+    dragging = true;
+    head.setAttribute('data-dragging', 'true');
+    document.addEventListener("touchmove", onPointerMove, { passive: false });
+    document.addEventListener("touchend", onPointerUp);
+    onPointerMove(e);
+    e.preventDefault();
+  }, { passive: false });
+
+  // keyboard support for wrap & head
+  function handleKey(e) {
+    if (!audio || !(isFinite(totalDuration) && totalDuration > 0)) return;
+    const step = 5; // seconds
+    if (["ArrowRight", "ArrowUp"].includes(e.key)) {
+      seekToTime((audio.currentTime || 0) + step);
+      e.preventDefault();
+    } else if (["ArrowLeft", "ArrowDown"].includes(e.key)) {
+      seekToTime((audio.currentTime || 0) - step);
+      e.preventDefault();
+    } else if (e.key === "Home") {
+      seekToTime(0);
+      e.preventDefault();
+    } else if (e.key === "End") {
+      seekToTime(totalDuration);
+      e.preventDefault();
+    }
   }
 
-  // attach listeners
-  container.addEventListener('mousedown', onMouseDown);
-  container.addEventListener('touchstart', onTouchStart, { passive: false });
-  container.addEventListener('click', onClick);
+  wrap.addEventListener("keydown", handleKey);
+  head.addEventListener("keydown", handleKey);
+}
 
 
-  // sync visuals with audio when not dragging
-  if (audio) {
-    audio.addEventListener('timeupdate', () => {
-      if (dragging) return;
-      const pct = totalDuration ? (audio.currentTime || 0) / totalDuration : 0;
-      setProgressUI(pct);
-      container.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
-    });
-    audio.addEventListener('loadedmetadata', () => {
-      const pct = totalDuration ? (audio.currentTime || 0) / totalDuration : 0;
-      setProgressUI(pct);
-      container.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
-    });
-  }
 
-  // ensure touch-action none via CSS ideally, but also prevent some defaults
-  container.style.touchAction = 'none';
-})();
-
-// Global shortcuts: [ and ] to seek exactly 10 seconds (no Shift behavior)
 (function globalShortcutsSeekBracketsSimple() {
   const audioEl = document.querySelector('audio');
   if (!audioEl) return;
@@ -263,41 +284,34 @@ if (audio) {
   }
 
   window.addEventListener('keydown', (ev) => {
-    if (isTyping()) return; // don't hijack typing fields
+    if (isTyping()) return;
 
-    // Use physical key code for reliability
-    const code = ev.code; // 'BracketLeft' or 'BracketRight'
+    const code = ev.code;
     if (code !== 'BracketLeft' && code !== 'BracketRight') return;
 
     ev.preventDefault();
 
-    // ensure totalDuration is available (fallback to audio.duration)
     if ((!isFinite(totalDuration) || totalDuration <= 0) && isFinite(audioEl.duration)) {
       totalDuration = audioEl.duration;
     }
 
-    const amount = 10; // seconds, always
+    const amount = 10;
 
     let newTime = (audioEl.currentTime || 0) + (code === 'BracketRight' ? amount : -amount);
 
-    // clamp to [0, max]
     const maxT = totalDuration && totalDuration > 0 ? totalDuration : (isFinite(audioEl.duration) ? audioEl.duration : Infinity);
     newTime = Math.max(0, Math.min(newTime, maxT));
 
-    // perform seek
     audioEl.currentTime = newTime;
-
-    // update visuals + captions
     const pct = (maxT && maxT > 0) ? (newTime / maxT) : 0;
     setProgressUI(pct);
     setTimeCounter(newTime);
     if (typeof updateScrollForTime === 'function') updateScrollForTime(newTime);
 
-    // update aria value if present
-    const ringContainer = document.getElementById('progress-ring-container');
-    if (ringContainer) ringContainer.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
+    const wrap = document.getElementById('progress-wrap');
+    if (wrap) wrap.setAttribute('aria-valuenow', String(Math.round(pct * 100)));
 
-    // small debug (remove after confirm)
+
     console.log(`[Shortcuts] ${code} -> seek to ${newTime}s (pct ${Math.round(pct * 100)}%)`);
   });
 })();
