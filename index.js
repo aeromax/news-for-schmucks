@@ -1,6 +1,6 @@
 import express from "express";
 import cron from "node-cron";
-import { runJob } from "./backend/runJob.js";
+import "./backend/runJob.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
