@@ -1,13 +1,15 @@
 (() => {
   /* ---------- headline ---------- */
-  const headline = document.getElementById('date');
-  headline.textContent = `${new Date().toLocaleDateString(undefined, {
-    year: 'numeric', month: 'long', day: 'numeric'
-  })}`;
+  const headlineDate = document.querySelector('.date');
+  if (headlineDate) {
+    headlineDate.textContent = `${new Date().toLocaleDateString(undefined, {
+      year: 'numeric', month: 'long', day: 'numeric'
+    })}`;
+  }
 
   /* ---------- audio + blobs ---------- */
-  const audio = document.getElementById('audio');
-  const playIcon = document.getElementById('playIcon');
+  const audio = document.querySelector('.audio');
+  const playIcon = document.querySelector('.play-icon');
   const blobs = Array.from(document.querySelectorAll('.blob'));
 
   /* Web Audio setup */
@@ -22,7 +24,7 @@
       analyser.smoothingTimeConstant = 0.4;
       data = new Uint8Array(analyser.frequencyBinCount);
     }
-    if (!sourceNode) {
+    if (!sourceNode && audio) {
       sourceNode = ctx.createMediaElementSource(audio);
       sourceNode.connect(analyser);
       analyser.connect(ctx.destination);
@@ -30,36 +32,31 @@
   }
 
   /* ---------- amplitude-driven scaling ---------- */
-  /* ---------- amplitude-driven scaling (per blob) ---------- */
   function animateBlobs() {
     analyser.getByteFrequencyData(data);
 
-    // helper that averages a slice of the FFT array
     const avgSlice = (start, end) => {
       let sum = 0;
       for (let i = start; i < end; i++) sum += data[i];
       return (sum / (end - start)) / 255; // → 0‒1
     };
 
-    const now = performance.now() / 1000; // seconds
+    const now = performance.now() / 1000;
 
-    /* blob-specific scale factors */
     const scales = [
-      1 + avgSlice(0, 8) * 0,            // low bass thump
-      1 + avgSlice(32, 96) * 0.5,           // mids
-      1 + avgSlice(8, 48) * 0.1,          // highs / cymbals
-      1 + avgSlice(32, 96) * 0.1,           // mids
+      1 + avgSlice(0, 8) * 0,       // low bass thump
+      1 + avgSlice(32, 96) * 0.5,   // mids
+      1 + avgSlice(8, 48) * 0.1,    // highs
+      1 + avgSlice(32, 96) * 0.1    // mids again
     ];
 
     blobs.forEach((b, i) => {
-      /* tiny per-blob noise so nothing is perfectly steady */
       const jitter = 1 + Math.sin(now * (1.3 + i * 0.7)) * 0.02;
       b.style.setProperty('--scale', (scales[i] * jitter).toFixed(3));
     });
 
     rafId = requestAnimationFrame(animateBlobs);
   }
-
 
   function stopAnim() {
     if (rafId) cancelAnimationFrame(rafId);
@@ -81,22 +78,26 @@
     stopAnim();
   }
 
-  playIcon.addEventListener('click', () => audio.paused ? play() : pause());
-  audio.addEventListener('ended', pause);
-  audio.addEventListener('pause', () => { if (!audio.ended) pause(); });
+  if (playIcon) {
+    playIcon.addEventListener('click', () => audio.paused ? play() : pause());
+  }
+  if (audio) {
+    audio.addEventListener('ended', pause);
+    audio.addEventListener('pause', () => { if (!audio.ended) pause(); });
+  }
 
-  const ring = document.querySelector('#playIcon .progress-ring');
+  /* optional progress ring support */
+  const ring = document.querySelector('.play-icon .progress-ring');
   if (!audio || !ring) return;
 
-  const radius = ring.r.baseVal.value;         // 48
-  const circumference = 2 * Math.PI * radius;        // ≈301
+  const radius = ring.r.baseVal.value;
+  const circumference = 2 * Math.PI * radius;
   ring.style.strokeDasharray = `${circumference}`;
   ring.style.strokeDashoffset = `${circumference}`;
 
-  /* drive the ring each frame */
   function tick() {
     if (audio.duration) {
-      const pct = audio.currentTime / audio.duration; // 0→1
+      const pct = audio.currentTime / audio.duration;
       ring.style.strokeDashoffset = circumference * (1 - pct);
     }
     requestAnimationFrame(tick);

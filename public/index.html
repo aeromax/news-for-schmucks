@@ -6,58 +6,62 @@
   <title>News for Schmucks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="css/style.css">
-
 </head>
 
 <body>
-  <div class="container palette-1">
+  <div class="container">
     <div class="content-wrapper">
       <div class="headline-wrapper">
-        <h1>
-          <div id="headline">News for <span style="color:#ff3083;">Schmucks.</span></div>
-          <div class="subhead">some news-ish stories for <span id="date"></span></div>
-        </h1>
+        <div class="headline">
+          <h1>News for <span style="color:#ff3083;">Schmucks.</span></h1>
+        </div>
+        <div class="subhead">some news-ish stories for <span class="date"></span></div>
       </div>
-      <div class="blobs" id="blobs">
+
+      <!-- Blobs -->
+      <div class="blobs">
         <div class="blob blob-1"></div>
         <div class="blob blob-2"></div>
         <div class="blob blob-3"></div>
         <div class="blob blob-4"></div>
-        <div id="playIcon" class="play">
+        <div class=" play-icon play">
           <svg viewBox="0 0 100 100">
-            <!-- outline triangle -->
-            <polygon class="play-triangle" points="50 20, 80 80, 20 80" />
-            <!-- pause bars -->
+            <polygon class="play-triangle" points="50 20, 80 80, 20 80"></polygon>
             <g class="pause-bars">
               <rect x="30" y="15" width="12" height="70" rx="2" />
               <rect x="58" y="15" width="12" height="70" rx="2" />
             </g>
           </svg>
         </div>
+
+      </div>
+
+      <!-- Info panel -->
+      <div class="info-panel">
+        <div class="small-text time-counter" aria-live="polite">
+          Bullshit remaining: <span class="counter">00:00</span>
+        </div>
         <!-- Progress bar -->
-        <div id="progress-ring-container">
-          <div class="progress-track"></div> <!-- static background ring -->
-          <div class="progress-ring"></div> <!-- animated progress ring -->
+        <div class="progress-wrap" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+          <div class="progress-fill"></div>
+          <button class="progress-head" aria-label="Seek" aria-valuemin="0" aria-valuemax="100"
+            aria-valuenow="0"></button>
         </div>
       </div>
-      <div id="timeCounter" class="time-counter" aria-live="polite">00:00</div>
-      <div id="caption-box">
-        <div id="captionScroll" class="caption-scroll" aria-live="polite"></div>
+
+      <!-- Captions -->
+      <div class="caption-box">
+        <div class="caption-scroll" aria-live="polite"></div>
       </div>
     </div>
-
-
-
-  </div>
   </div>
 
-  <audio id="audio" src="/audio.mp3?nocache=${Date.now()}" preload="auto" playsinline crossorigin="anonymous">
+  <audio class="audio" src="/audio.mp3?nocache=${Date.now()}" preload="auto" playsinline crossorigin="anonymous">
     <track src="transcript.json" kind="subtitles" srclang="en" label="English Subtitles" default>
   </audio>
 
   <script src="js/blobAnimation.js"></script>
   <script src="js/captionSync.js"></script>
-
 </body>
 
 </html>
