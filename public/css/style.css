@@ -1,68 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
 
+:root {
+  --bg-0: #101030;
+  --bg-1: #050515;
+  --blob-1: rgb(220, 145, 255);
+  --blob-2: rgb(29, 83, 245);
+  --blob-3: rgb(0, 255, 255);
+  --blob-4: rgb(255, 48, 131);
+  /* --blob-1: #dc91ff;
+  --blob-2: #1d53f5;
+  --blob-3: #00ffff;
+  --blob-4: #ff3083; */
+  --light-gray: #999;
+}
+
 html,
 body {
   height: 100%;
   width: 100%;
   margin: 0;
+  padding: 0;
   background: #000;
   display: flex;
   justify-content: center;
   align-items: center;
   color: #fff;
   font-family: "Poppins", "Helvetica Neue", Helvetica, sans-serif;
-}
-
-.content-wrapper {
-  height: 90%;
-  width: 100%;
-  max-width: 700px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 50px;
-  padding: 20px;
-}
-
-.headline-wrapper {
-  flex: 0 0 10%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 2rem;
-  margin: 0;
-  text-align: center;
-}
-
-#headline {
-  letter-spacing: -5px;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.subhead {
-  font-size: 1.5rem;
-  font-weight: 400;
-
-}
-
-
-
-/* --------------------------------------------------
-   PALETTE
-   -------------------------------------------------- */
-.palette-1 {
-  --bg-0: #101030;
-  --bg-1: #050515;
-  --blob-1: #ffffff;
-  --blob-2: #8002ff;
-  --blob-3: #00ffff;
-  --blob-4: #ff3083;
-}
-
-body {
-  padding: 0;
-  margin: 0;
 }
 
 .container {
@@ -73,25 +36,69 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-
 }
 
+.content-wrapper {
+  height: 90%;
+  width: 100%;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  padding: 20px;
+}
 
-#caption-box {
+.headline-wrapper {
+  flex: 0 0 10%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  margin: 0;
+  text-align: center;
+}
+
+.headline {
+  letter-spacing: -5px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.headline h1 {
+  margin: 1rem auto 0;
+}
+
+.headline h1 span {
+  color: var(--blob-4);
+}
+
+.subhead {
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.small-text {
+  font-size: 0.95rem;
+}
+
+.caption-box {
   height: 250px;
+  margin: 3rem 0 0;
+  flex-grow: 1;
   bottom: 0;
   font-size: 1.2rem;
   font-weight: 400;
   text-align: center;
   color: white;
   position: relative;
-  padding: 1rem;
   width: 100%;
   overflow: hidden;
 }
 
-#caption-box::before,
-#caption-box::after {
+.caption-box::before,
+.caption-box::after {
   content: "";
   position: absolute;
   left: 0;
@@ -101,46 +108,36 @@ body {
   z-index: 2;
 }
 
-#caption-box::before {
+.caption-box::before {
   top: 0;
   background: linear-gradient(to bottom, rgba(5, 5, 21, 1), rgba(0, 0, 0, 0));
 }
 
-#caption-box::after {
+.caption-box::after {
   bottom: 0;
   background: linear-gradient(to top, rgba(5, 5, 21, 1), rgba(0, 0, 0, 0));
 }
 
-#caption-scroll {
+.caption-scroll {
   position: absolute;
-  top: 90%;
+  top: 100%;
   left: 0;
   width: 100%;
   white-space: pre-line;
   z-index: 1;
   background: transparent;
   animation-play-state: paused;
-  transition: all 2s;
-  color: #999;
+  color: var(--light-gray);
 }
 
-#caption-scroll[data-faded-in="true"] {
-  opacity: 1;
-}
-
-#caption-scroll[data-state="paused"]:not([data-faded-in="true"]) {
-  opacity: 0;
-}
-
-#caption-scroll div span {
+.caption-scroll div span {
   display: block;
-  margin: 2rem 0 0 0;
+  margin: 2rem 0 0;
 }
 
-#caption-scroll .bold-caption {
+.caption-scroll .bold-caption {
   font-weight: 600;
   color: var(--blob-4);
-
 }
 
 @keyframes scroll-up {
@@ -153,21 +150,15 @@ body {
   }
 }
 
-/* --------------------------------------------------
-   BLOB CONTAINER
-   -------------------------------------------------- */
 .blobs {
   position: relative;
   cursor: pointer;
-  width: 90vw;
+  width: 50%;
   aspect-ratio: 1 / 1;
   max-width: 100%;
-  max-height: 330px;
+  margin: 2rem auto;
 }
 
-/* --------------------------------------------------
-   GENERIC BLOB STYLES – circular neon rings with inner glow
-   -------------------------------------------------- */
 .blob {
   --scale: 1;
   --border-thickness: 6px;
@@ -175,23 +166,18 @@ body {
   top: 50%;
   left: 50%;
   width: var(--w);
-  height: var(--hgt);
+  height: 100%;
   transform-origin: 50% 50%;
   transform: translate(-50%, -50%) scale(var(--scale));
   border-radius: 50%;
-  /* background: radial-gradient(circle at center,
-      transparent 0%,
-      color-mix(in srgb, var(--blob-color) 5%, transparent) 85%,
-      color-mix(in srgb, var(--blob-color) 90%, transparent) 95%,
-      transparent 100%); */
   border: var(--border-thickness) solid var(--blob-color);
   mix-blend-mode: color-dodge;
-  filter: brightness(1.8) blur(3px) drop-shadow(0 0 12px hsl(var(--h) var(--s) var(--l) / 0.8));
-  animation: rotateBlob var(--rot) linear infinite;
+  filter: brightness(1) blur(7px) drop-shadow(0 0 0 var(--blob-color));
+  animation: rotate-blob var(--rot) linear infinite;
+  z-index: 1;
 }
 
-
-@keyframes rotateBlob {
+@keyframes rotate-blob {
   from {
     transform: translate(-50%, -50%) scale(var(--scale)) rotate(0deg);
   }
@@ -201,74 +187,35 @@ body {
   }
 }
 
-
-
-/* --------------------------------------------------
-   INDIVIDUAL BLOBS — VARIANCE IN SIZE / POSITION / ROTATION SPEED
-   -------------------------------------------------- */
-/* White ring */
 .blob-1 {
-  --w: 300px;
-  --hgt: 300px;
-  --h: 325;
-  --s: 100%;
-  --l: 55%;
-  top: 50%;
-  left: 50%;
+  --w: 100%;
   --rot: 22s;
   --blob-color: var(--blob-1);
-  z-index: 1;
 }
 
-/* Indigo ring  */
 .blob-2 {
-  --w: 290px;
-  --hgt: 280px;
-  transform: rotate(-12deg);
-  --h: 239;
-  --s: 44%;
-  --l: 47%;
-  top: 50%;
-  left: 50%;
+  --w: 95%;
   --rot: 30s;
-  animation-direction: reverse;
   --blob-color: var(--blob-2);
-  z-index: 1;
-}
-
-/* Electric‑blue ring  */
-.blob-3 {
-  --w: 290px;
-  --hgt: 280px;
-  --h: 184;
-  --s: 64%;
-  --l: 67%;
-  top: 50%;
-  left: 50%;
-  --rot: 14s;
-  --blob-color: var(--blob-3);
-  z-index: 1;
-}
-
-/* Magenta */
-.blob-4 {
-  --w: 300px;
-  --hgt: 320px;
-  --h: 240;
-  --s: 62%;
-  --l: 5%;
-  top: 50%;
-  left: 50%;
-  --rot: 60s;
+  transform: rotate(-12deg);
   animation-direction: reverse;
-  --blob-color: var(--blob-4);
-  z-index: 1;
 }
 
-/* --------------------------------------------------
-   PLAYER ICON
-   -------------------------------------------------- */
-#playIcon {
+.blob-3 {
+  --w: 90%;
+  --rot: 10s;
+  --blob-color: var(--blob-3);
+}
+
+.blob-4 {
+  --w: 80%;
+  --rot: 30s;
+  --border-thickness: 25px;
+  --blob-color: var(--blob-4);
+  animation-direction: reverse;
+}
+
+.play-icon {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -285,160 +232,190 @@ body {
   overflow: visible;
 }
 
-/* core SVG styling */
-#playIcon svg {
+.play-icon svg {
   width: 100%;
   height: 100%;
-  stroke: rgba(255, 255, 255, 0.95);
+  /* stroke: rgba(255, 255, 255, 0.95); */
+  stroke: var(--blob-4);
+  filter: drop-shadow(0 0 6px var(--blob-4));
   stroke-width: 6px;
   fill: none;
   overflow: visible;
-  /* filter: drop-shadow(0 0 25px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.6)); */
 }
 
-/* Rotate play triangle 90° CW */
-#playIcon .play-triangle {
+.play-icon .play-triangle {
   transform-origin: 50% 50%;
   transform: rotate(90deg);
 }
 
-
-/* show / hide play vs pause glyphs */
-#playIcon .play-triangle,
-#playIcon .pause-bars {
+.play-icon .play-triangle,
+.play-icon .pause-bars {
   opacity: 0;
   transition: opacity 250ms ease;
 }
 
-#playIcon.play .play-triangle {
+.play-icon.play .play-triangle {
   opacity: 1;
 }
 
-#playIcon.play .pause-bars {
+.play-icon.play .pause-bars {
   opacity: 0;
 }
 
-#playIcon.pause .play-triangle {
+.play-icon.pause .play-triangle {
   opacity: 0;
 }
 
-#playIcon.pause .pause-bars {
+.play-icon.pause .pause-bars {
   opacity: 1;
 }
-
-
 
 .time-counter {
   flex: 0 0 auto;
-  font-family: "Poppins", "Helvetica Neue", Helvetica, sans-serif;
   text-align: center;
-  font-size: 0.95rem;
-  opacity: 0.9;
   line-height: 1;
   white-space: nowrap;
   pointer-events: none;
-  color: #999;
+  color: var(--light-gray);
+  padding: .5rem 0;
 }
 
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 8px 0;
+}
 
-/* === CIRCULAR PROGRESS RING === */
+.play {
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 5;
+}
 
-#progress-ring-container {
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.progress-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  height: 4px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+
+.progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.2), var(--blob-4) 60%);
+  box-shadow: 0 0 8px rgba(255, 48, 131, 0.12);
+  transition: width 0.08s linear;
+  touch-action: none;
+}
+
+.progress-head {
   position: absolute;
   top: 50%;
-  left: 50%;
-  width: 200px;
-  height: 200px;
+  left: 0%;
   transform: translate(-50%, -50%);
-  z-index: 3;
-}
-
-/* make ring interactive and show pointer cursor */
-#progress-ring-container {
-  cursor: pointer;
-  touch-action: none;
-  /* prefer this alongside JS passive:false handlers */
-}
-
-/* make ring focusable look */
-#progress-ring-container:focus {
-  outline: none;
-  box-shadow: 0 0 0 6px rgba(255, 48, 131, 0.08);
-}
-
-.progress-track,
-.progress-ring {
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  mask-image: radial-gradient(circle, transparent 90px, black 61px);
-  -webkit-mask-image: radial-gradient(circle, transparent 90px, black 61px);
-  transform: rotate(5deg);
+  background: var(--blob-4);
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35), 0 0 8px rgba(255, 48, 131, 0.12);
+  filter: drop-shadow(0 0 6px var(--blob-4));
+  cursor: grab;
+  z-index: 6;
+  touch-action: none;
+  transition: transform 0.06s linear;
 }
 
-/* Static track behind the progress arc */
-.progress-track {
-  background: conic-gradient(var(--bg-0) 0deg 350deg, transparent 350deg 360deg);
-  z-index: 1;
+.progress-head:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.05);
 }
 
-/* Foreground progress arc */
-.progress-ring {
-  background: conic-gradient(#fff 0deg 180deg, transparent 180deg 360deg);
-  transition: background 0.2s linear;
-  z-index: 2;
+.progress-head:focus {
+  outline: none;
+  box-shadow: 0 0 0 6px rgba(255, 48, 131, 0.08), 0 6px 14px rgba(0, 0, 0, 0.35);
 }
 
-
-
-/* Mobile: tighten spacing a bit */
-@media (max-width: 480px) {
-
-  .time-counter {
-    font-size: 0.9rem;
-  }
+.time-counter-display {
+  font-size: 14px;
+  color: #fff;
+  line-height: 1;
+  user-select: none;
 }
 
-
-/* ensure blobs pause when audio pauses */
 .paused-animation .blob {
   animation-play-state: paused;
 }
 
-
-
 @media (max-width: 480px) {
-
-  /* shrink headline stack */
-  .headline-wrapper {
-    font-size: 1.4rem;
+  .play {
+    width: 44px;
+    height: 44px;
   }
 
-  #headline {
-    letter-spacing: -4px;
+  .progress-wrap {
+    height: 6px;
+  }
+
+  .progress-head {
+    width: 14px;
+    height: 14px;
+  }
+
+  .time-counter-display {
+    font-size: 12px;
+  }
+
+  .time-counter {
+    font-size: 0.9rem;
+  }
+
+  .headline {
+    font-size: 1.5rem;
+    padding: 0 1rem;
   }
 
   .subhead {
     font-size: 1rem;
+    padding: .5rem 0 0;
   }
 
-  /* captions a bit smaller, tighter padding */
-  #caption-box {
-    font-size: 1rem;
+  .caption-box {
+    font-size: .8rem;
     padding: 0.5rem 0.75rem;
   }
 
-  #playIcon {
+  .play-icon {
     width: 64px;
     height: 64px;
   }
 
-  #playIcon svg {
+  .play-icon svg {
     stroke-width: 4px;
   }
 
-  /* blob container shrinks slightly on phones */
   .blobs {
     max-width: 240px;
     max-height: 240px;
