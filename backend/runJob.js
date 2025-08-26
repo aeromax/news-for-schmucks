@@ -1,5 +1,4 @@
 // runJob.js
-
 import { fetchHeadlines } from "./services/fetchHeadlines.js";
 import { summarizeNews } from "./services/summarizeNews.js";
 import { clean } from "./services/clean.js";
@@ -8,43 +7,40 @@ import { saveFiles } from "./services/saveFiles.js";
 import { env } from "./utils/env.js";
 import { getAudioDuration } from "./services/getDuration.js";
 
-
 const isTest = process.argv.includes("--test");
 
-(async () => {
-  console.log(`[Manual Run] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`);
+export async function runJob() {
+  console.log(
+    `[RunJob] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`
+  );
 
   try {
     const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
     const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
     console.log(summary);
+
     const cleanText = clean(summary);
+
     const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
+
     const duration = await getAudioDuration("./test/audio.mp3");
     cleanText.duration = duration;
-    const updatedTranscript = cleanText;
-    await saveFiles("./", updatedTranscript, speech);
 
-
+    await saveFiles("./", cleanText, speech);
 
     console.log("✅ All done! Files written to /public.");
   } catch (err) {
-    // console.error("❌ Error during job:", err.response?.data || err.stack);
     showErr(err);
-    process.exit(1);
+    throw err; // bubble up so caller (cron, API endpoint) can handle
   }
-})();
-
-
+}
 
 function showErr(err) {
-  // Prefer full stack if available
   if (err?.stack) {
     console.error(err.stack);
     return;
   }
 
-  // Axios error with possible buffer body
   const data = err?.response?.data ?? err;
   if (Buffer.isBuffer(data)) {
     const text = data.toString("utf8");
@@ -56,4 +52,9 @@ function showErr(err) {
   } else {
     console.error("[Error]", data);
   }
+}
+
+// If you run `node runJob.js` directly, execute immediately
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runJob().catch(() => process.exit(1));
 }
