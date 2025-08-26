@@ -42,20 +42,7 @@ app.get("/run-job", async (req, res) => {
   }
 });
 
-// Schedule the cron only if you actually want it running on this instance
-// Set CRON_ENABLED=false in Render env if you deploy multiple instances/jobs
-if (process.env.CRON_ENABLED !== "false") {
-  // Daily at 1 AM
-  cron.schedule("0 1 * * *", async () => {
-    console.log("[Cron] Triggered by schedule");
-    try {
-      await runJob();
-      console.log("[Cron] Job completed");
-    } catch (err) {
-      console.error("[Cron] Job failed:", err);
-    }
-  });
-}
+
 
 app.listen(PORT, HOST, () => {
   console.log(`[Server] Listening on http://${HOST}:${PORT}`);
