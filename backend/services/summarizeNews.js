@@ -18,7 +18,7 @@ export async function summarizeNews(apiKey, urls, testMode = false) {
         const raw = await axios.post(
             "https://api.openai.com/v1/chat/completions",
             {
-                model: "gpt-4o",
+                model: "gpt-5-mini",
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     {
@@ -40,6 +40,6 @@ export async function summarizeNews(apiKey, urls, testMode = false) {
     content = response.choices[0].message.content;
     const split = content
         .split(/\n+/);
-    
-    return {"text" : split} ;
+
+    return { "text": split };
 }
