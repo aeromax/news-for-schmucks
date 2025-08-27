@@ -6,6 +6,7 @@ import { sendDiscordWebhook } from "./backend/utils/notify.js";
 import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -26,7 +27,6 @@ app.use(express.static(staticPath));
 // Root should serve the HTML file
 app.get("/", (req, res) => {
   res.sendFile(path.join(staticPath, "index.html"));
-  sendDiscordWebhook(`Someone visited News for Schmucks`);
 });
 
 // Optional: manual trigger for debugging or webhook pinging
@@ -34,15 +34,16 @@ app.get("/run-job", async (req, res) => {
   try {
     await runJob();
     res.status(200).json({ ok: true, message: "Job executed." });
+    sendDiscordWebhook(`News-for-Schmucks job executed`);
   } catch (err) {
     console.error("[/run-job] Failed:", err);
-
     res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
+    sendDiscordWebhook(`News-for-Schmucks job failed ${err}`);
   }
 });
 
 app.listen(PORT, HOST, () => {
   console.log(`[Server] Listening on http://${HOST}:${PORT}`);
   console.log(`[Server] Serving static from: ${staticPath}`);
-
+  sendDiscordWebhook(`News-for-Schmucks backend started`);
 });

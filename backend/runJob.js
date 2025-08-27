@@ -6,13 +6,15 @@ import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import { env } from "./utils/env.js";
 import { getAudioDuration } from "./services/getDuration.js";
-
+import { sendDiscordWebhook } from "./utils/notify.js";
 const isTest = process.argv.includes("--test");
 
 export async function runJob() {
   console.log(
     `[RunJob] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`
   );
+  sendDiscordWebhook(`News for Schmucks job running`);
+
 
   try {
     const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
@@ -45,11 +47,14 @@ function showErr(err) {
   if (Buffer.isBuffer(data)) {
     const text = data.toString("utf8");
     try {
+      sendDiscordWebhook("[HTTP Error JSON]", JSON.parse(text));
       console.error("[HTTP Error JSON]", JSON.parse(text));
     } catch {
+      sendDiscordWebhook("[HTTP Error Text]", text);
       console.error("[HTTP Error Text]", text);
     }
   } else {
+    sendDiscordWebhook("[Error]", data);
     console.error("[Error]", data);
   }
 }
