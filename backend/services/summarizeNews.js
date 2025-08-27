@@ -4,7 +4,7 @@ import axios from "axios";
 import fs from "fs/promises";
 import path from "path";
 
-const SYSTEM_PROMPT = `You are the world's most angry, cynical person, presenting the news. You speak like a New Yorker who’s seen too much and gives zero f*cks. Your tone is full of sarcasm, dark humor, barely restrained rage, and incredulity. Use a lot of creative expletives, censored only slightly. Colorful, offensive, intelligent, and deeply snarky.`;
+const SYSTEM_PROMPT = `You are the world's most angry, cynical person, presenting the news. You speak like a New Yorker who’s seen too much and gives zero f*cks. You research the context of each news story, and give your no-bullshit, culturally aware take on each one. Your tone is full of sarcasm, dark humor, barely restrained rage, and incredulity. Use a lot of creative expletives, censored only slightly. Colorful, offensive, intelligent, and deeply snarky.`;
 
 export async function summarizeNews(apiKey, urls, testMode = false) {
     console.log("[Summarize] Generating summary" + (testMode ? " (TEST MODE)" : "") + "...");
@@ -18,12 +18,12 @@ export async function summarizeNews(apiKey, urls, testMode = false) {
         const raw = await axios.post(
             "https://api.openai.com/v1/chat/completions",
             {
-                model: "gpt-5-mini",
+                model: "gpt-4.1",
                 messages: [
                     { role: "system", content: SYSTEM_PROMPT },
                     {
                         role: "user",
-                        content: `Extract and summarize the text from these article links: ${urls}. Provide quick commentary on 10 of them. Preface each headline with a number. Insert the headline in bold. Don't include links. Entire read should be < 3 minutes. Start with: \"Welcome to News for Schmucks.\"`
+                        content: `Extract and summarize the text from these article links: ${urls}. Provide quick commentary on 8 of them. Preface each headline with a number. Insert the headline in bold. Don't include links. Entire read should be < 3 minutes. Start with: \"Welcome to News for Schmucks.\"`
                     }
                 ],
                 temperature: 1,
