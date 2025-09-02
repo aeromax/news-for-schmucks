@@ -8,22 +8,48 @@ const formatBoldCaptions = (text) =>
   text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadCaptionsFromJSON("./transcript.json");
+  loadCaptionsFromJSON(`/storage/transcript.json?nocache=${Date.now()}`);
   initLinearProgress();
 });
 
 async function loadCaptionsFromJSON(jsonUrl) {
-  const res = await fetch(jsonUrl);
-  const data = await res.json();
-  duration = parseFloat(data.captions.duration);
-  if (timeCounter) timeCounter.textContent = `${fmtTime(duration)}`;
-  const captions = Array.isArray(data.captions.text)
-    ? data.captions.text
-    : [];
-  if (!duration || captions.length === 0) {
-    console.error("❌ Invalid structure. Duration or captions missing.", {
-      duration,
-      captions,
+  let data;
+  try {
+    const res = await fetch(jsonUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+  } catch (err) {
+    console.error("❌ Failed to load captions JSON", { jsonUrl, err });
+    return;
+  }
+
+  const captionsObj = data?.captions;
+  if (!captionsObj) {
+    console.error("❌ Invalid structure. 'captions' object missing.", { data });
+    return;
+  }
+
+  const captions = Array.isArray(captionsObj.text) ? captionsObj.text : [];
+  let rawDuration = captionsObj.duration;
+  let parsedDuration =
+    typeof rawDuration === "number" ? rawDuration : parseFloat(rawDuration);
+  if (!Number.isFinite(parsedDuration) && Number.isFinite(audio?.duration)) {
+    parsedDuration = audio.duration;
+  }
+  duration = parsedDuration;
+
+  if (timeCounter) timeCounter.textContent = `${fmtTime(isFinite(duration) ? duration : 0)}`;
+
+  if (captions.length === 0) {
+    console.error("❌ Invalid structure. 'captions.text' missing or empty.", {
+      captions: captionsObj.text,
+    });
+    return;
+  }
+
+  if (!Number.isFinite(duration)) {
+    console.error("❌ Invalid structure. 'captions.duration' missing or invalid.", {
+      duration: rawDuration,
     });
     return;
   }
