@@ -5,32 +5,29 @@ import { clean } from "./services/clean.js";
 import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import { env } from "./utils/env.js";
-import { getAudioDuration } from "./services/getDuration.js";
+import { getAudioDurationFromBuffer } from "./services/getDuration.js";
 import { sendDiscordWebhook } from "./utils/notify.js";
-const isTest = process.argv.includes("--test");
 
 export async function runJob() {
-  console.log(
-    `[RunJob] Starting News for Schmucks job${isTest ? " (TEST MODE)" : ""}...`
-  );
+  console.log(`[RunJob] Starting News for Schmucks job...`);
   sendDiscordWebhook(`News for Schmucks job running`);
 
 
   try {
-    const urls = await fetchHeadlines(env.NEWS_API_KEY, isTest);
-    const summary = await summarizeNews(env.OPENAI_API_KEY, urls, isTest);
+    const urls = await fetchHeadlines(env.NEWS_API_KEY);
+    const summary = await summarizeNews(env.OPENAI_API_KEY, urls);
     console.log(summary);
 
     const cleanText = clean(summary);
 
-    const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText, isTest);
+    const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText);
 
-    const duration = await getAudioDuration("./test/audio.mp3");
+    const duration = await getAudioDurationFromBuffer(speech);
     cleanText.duration = duration;
 
     await saveFiles("./", cleanText, speech);
 
-    console.log("✅ All done! Files written to /public.");
+    console.log("✅ All done! Files written to /storage.");
   } catch (err) {
     showErr(err);
     throw err; // bubble up so caller (cron, API endpoint) can handle
