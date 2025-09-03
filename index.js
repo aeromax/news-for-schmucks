@@ -33,6 +33,25 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(staticPath, "index.html"));
 });
 
+// Lightweight view notification endpoint
+app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
+  try {
+    const ua = req.get('user-agent') || 'unknown';
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+    const meta = req.body || {};
+    const pathViewed = meta.path || req.originalUrl;
+    const tz = meta.tz || 'unknown-tz';
+    const lang = meta.lang || 'unknown-lang';
+
+    const msg = `Site view: ${pathViewed} | ip:${ip} | ua:${ua} | tz:${tz} | lang:${lang}`;
+    await sendDiscordWebhook(msg);
+    res.status(204).end();
+  } catch (err) {
+    console.error('[notify-view] error', err);
+    res.status(500).json({ ok: false });
+  }
+});
+
 // Optional: manual trigger for debugging or webhook pinging
 app.get("/run-job", async (req, res) => {
   try {
