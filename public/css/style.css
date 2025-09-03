@@ -95,6 +95,7 @@ body {
   position: relative;
   width: 100%;
   overflow: hidden;
+  touch-action: none;
 }
 
 .caption-box::before,
@@ -119,15 +120,15 @@ body {
 }
 
 .caption-scroll {
-  position: absolute;
-  top: 100%;
+  position: relative;
+  top: 0;
   left: 0;
   width: 100%;
   white-space: pre-line;
   z-index: 1;
   background: transparent;
-  animation-play-state: paused;
   color: var(--light-gray);
+  will-change: transform;
 }
 
 .caption-scroll div span {
@@ -140,15 +141,7 @@ body {
   color: var(--blob-4);
 }
 
-@keyframes scroll-up {
-  from {
-    transform: translateY(0%);
-  }
-
-  to {
-    transform: translateY(-100%);
-  }
-}
+/* CSS keyframes removed; JS drives transform translateY for smooth control */
 
 .blobs {
   position: relative;
