@@ -4,9 +4,13 @@ import fs from "fs/promises";
 import path from "path";
 
 export async function saveFiles(baseDir, transcriptText, audioBuffer) {
-    console.log("💾⬅[Save] Writing audio and transcript to /storage...");
+    // Resolve storage directory from env (e.g., /storage on Render) or local fallback
+    const storageDir = process.env.STORAGE_DIR
+        ? process.env.STORAGE_DIR
+        : (process.env.NODE_ENV === 'production' ? '/storage' : path.join(baseDir, 'storage'));
 
-    const storageDir = path.join(baseDir, "storage");
+    console.log(`💾⬅[Save] Writing audio and transcript to ${storageDir}...`);
+
     const audioPath = path.join(storageDir, "audio.mp3");
     const transcriptPath = path.join(storageDir, "transcript.json");
 

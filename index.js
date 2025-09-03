@@ -17,7 +17,10 @@ const HOST = "0.0.0.0";
 // Where your built/static files live. Adjust to "public" or "build" if that's your setup.
 const STATIC_DIR = process.env.STATIC_DIR || "public";
 const staticPath = path.join(__dirname, STATIC_DIR);
-const storagePath = path.join(__dirname, "storage");
+// Allow overriding storage directory via env (e.g., Render persistent disk mounted at /storage)
+const storagePath = process.env.STORAGE_DIR
+  ? process.env.STORAGE_DIR
+  : (process.env.NODE_ENV === 'production' ? '/storage' : path.join(__dirname, 'storage'));
 
 // Basic health check for Render
 app.get("/healthz", (req, res) => res.status(200).send("ok"));
