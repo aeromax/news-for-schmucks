@@ -27,7 +27,7 @@ export async function runJob() {
 
     await saveFiles("./", cleanText, speech);
 
-    console.log("✅ All done! Files written to /storage.");
+    console.log("✅ All done! Files written to storage directory.");
   } catch (err) {
     showErr(err);
     throw err; // bubble up so caller (cron, API endpoint) can handle
