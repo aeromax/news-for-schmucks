@@ -1,8 +1,16 @@
-const scrollSpeedFactor = 0.5;
+const scrollSpeedFactor = 0.5; // retained for potential speed tweaks (not used by CSS)
+const manualSensitivity = 2.0; // increase to make manual scroll feel snappier
 let duration;
 const audio = document.querySelector("audio");
 const timeCounter = document.querySelector(".counter");
 let totalDuration = 0;
+let resumeTimeout = null; // for manual scroll resume
+let userScrollingCaptions = false;
+// Virtual scroll state (in pixels) – drives transform: translateY
+let captionPosPx = 0;
+let captionTargetPx = 0;
+let maxScrollPx = 0; // contentHeight - containerHeight
+let lastTick = 0;
 
 const formatBoldCaptions = (text) =>
   text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');
@@ -33,12 +41,15 @@ async function loadCaptionsFromJSON(jsonUrl) {
   let rawDuration = captionsObj.duration;
   let parsedDuration =
     typeof rawDuration === "number" ? rawDuration : parseFloat(rawDuration);
-  if (!Number.isFinite(parsedDuration) && Number.isFinite(audio?.duration)) {
-    parsedDuration = audio.duration;
-  }
-  duration = parsedDuration;
+  duration = Number.isFinite(parsedDuration) ? parsedDuration : NaN;
 
-  if (timeCounter) timeCounter.textContent = `${fmtTime(isFinite(duration) ? duration : 0)}`;
+  // Set initial counter with whatever we know now
+  if (timeCounter) {
+    const knownDur = Number.isFinite(duration)
+      ? duration
+      : (Number.isFinite(audio?.duration) ? audio.duration : 0);
+    timeCounter.textContent = `${fmtTime(knownDur)}`;
+  }
 
   if (captions.length === 0) {
     console.error("❌ Invalid structure. 'captions.text' missing or empty.", {
@@ -47,12 +58,7 @@ async function loadCaptionsFromJSON(jsonUrl) {
     return;
   }
 
-  if (!Number.isFinite(duration)) {
-    console.error("❌ Invalid structure. 'captions.duration' missing or invalid.", {
-      duration: rawDuration,
-    });
-    return;
-  }
+  // If duration is unknown in JSON, don't bail; we will initialize once audio metadata loads.
 
   const container = document.querySelector(".caption-box");
   if (!container) return;
@@ -67,31 +73,36 @@ async function loadCaptionsFromJSON(jsonUrl) {
   container.innerHTML = "";
   container.appendChild(scrollDiv);
 
-  const updateAnimState = () => {
-    const state = scrollDiv.getAttribute("data-state");
-    scrollDiv.style.animationPlayState =
-      state === "playing" ? "running" : "paused";
-  };
-
-  new MutationObserver(updateAnimState).observe(scrollDiv, {
-    attributes: true,
-    attributeFilter: ["data-state"],
-  });
-
+  // Initialize JS-driven transform scroll (no CSS animation)
   requestAnimationFrame(() => {
     scrollDiv.style.width = "100%";
-    scrollDiv.style.animation = `scroll-up ${duration * scrollSpeedFactor
-      }s linear forwards`;
-    scrollDiv.setAttribute("data-state", "paused");
     scrollDiv.style.visibility = "visible";
+    recalcCaptionMetrics();
+    // Start at current audio position
+    updateScrollForTime(audio?.currentTime || 0, true);
 
     if (audio) {
       audio.addEventListener("play", () => {
-        scrollDiv.setAttribute("data-state", "playing");
+        if (userScrollingCaptions) return;
+        startCaptionRaf();
       });
       audio.addEventListener("pause", () => {
-        scrollDiv.setAttribute("data-state", "paused");
+        stopCaptionRaf();
       });
+    }
+  });
+
+  // Manual scroll support via wheel/drag/touch on the container
+  setupManualCaptionScroll(container, scrollDiv);
+  window.addEventListener("resize", () => {
+    const prevMax = maxScrollPx;
+    recalcCaptionMetrics();
+    // Keep position proportionally in place when layout changes
+    if (prevMax > 0 && maxScrollPx > 0) {
+      const pct = captionPosPx / prevMax;
+      setCaptionPos(pct * maxScrollPx);
+    } else {
+      setCaptionPos(Math.min(captionPosPx, maxScrollPx));
     }
   });
 }
@@ -134,28 +145,38 @@ function seekToTime(t) {
   t = Math.max(0, Math.min(maxT, t));
   if (audio) {
     audio.currentTime = t;
-    if (typeof updateScrollForTime === "function") updateScrollForTime(t);
+    if (typeof updateScrollForTime === "function") updateScrollForTime(t, true);
   }
   const pct = maxT && maxT > 0 ? t / maxT : 0;
   setProgressUI(pct);
   setTimeCounter(t);
 }
 
-function updateScrollForTime(t) {
+function updateScrollForTime(t, forceImmediate = false) {
+  const container = document.querySelector(".caption-box");
   const scrollDiv = document.querySelector(".caption-scroll");
-  if (!scrollDiv || !isFinite(duration)) return;
-  scrollDiv.setAttribute("data-state", "paused");
-  scrollDiv.style.animation = "none";
-  void scrollDiv.offsetWidth;
-  scrollDiv.style.animation = `scroll-up ${duration * scrollSpeedFactor
-    }s linear forwards`;
-  scrollDiv.style.animationDelay = `-${t}s`;
-  scrollDiv.setAttribute("data-state", audio?.paused ? "paused" : "playing");
+  if (!container || !scrollDiv) return;
+  const dur = Number.isFinite(duration)
+    ? duration
+    : (Number.isFinite(audio?.duration) ? audio.duration : 0);
+  if (!(dur > 0)) return;
+  recalcCaptionMetrics();
+  const pct = Math.max(0, Math.min(1, (t || 0) / dur));
+  captionTargetPx = pct * maxScrollPx;
+  if (!userScrollingCaptions || forceImmediate) {
+    setCaptionPos(captionTargetPx);
+  }
 }
 
 if (audio) {
   audio.addEventListener("loadedmetadata", () => {
     totalDuration = isFinite(audio.duration) ? audio.duration : 0;
+    // If JSON had no duration, adopt audio duration now
+    if (!Number.isFinite(duration) && Number.isFinite(audio.duration)) {
+      duration = audio.duration;
+      if (timeCounter) timeCounter.textContent = `${fmtTime(duration)}`;
+      updateScrollForTime(audio.currentTime || 0, true);
+    }
     setTimeCounter(audio.currentTime || 0);
     setProgressUI(
       (audio.currentTime || 0) /
@@ -172,6 +193,7 @@ if (audio) {
       (audio.currentTime || 0) / (totalDuration || audio.duration || 1);
     setProgressUI(pct);
     setTimeCounter(audio.currentTime || 0);
+    if (!userScrollingCaptions) updateScrollForTime(audio.currentTime || 0);
   });
 }
 
@@ -294,6 +316,158 @@ function initLinearProgress() {
   wrap.addEventListener("keydown", handleKey);
   head.addEventListener("keydown", handleKey);
 }
+
+function setupManualCaptionScroll(container, scrollDiv) {
+  let lastY = 0;
+  let pointerDown = false;
+
+  function beginManual() {
+    userScrollingCaptions = true;
+    clearResumeTimer();
+    stopCaptionRaf();
+  }
+
+  function clearResumeTimer() {
+    if (resumeTimeout) {
+      clearTimeout(resumeTimeout);
+      resumeTimeout = null;
+    }
+  }
+
+  function scheduleResume() {
+    clearResumeTimer();
+    resumeTimeout = setTimeout(() => {
+      if (pointerDown) return; // wait until release
+      userScrollingCaptions = false;
+      // snap target to current audio and resume smooth follow
+      updateScrollForTime(audio?.currentTime || 0);
+      if (audio && !audio.paused) startCaptionRaf();
+    }, 2000);
+  }
+
+  function adjustByDeltaY(deltaY) {
+    beginManual();
+    recalcCaptionMetrics();
+    setCaptionPos(captionPosPx + deltaY);
+    scheduleResume();
+  }
+
+  function onWheel(e) {
+    // prevent page scroll and make trackpad responsive
+    e.preventDefault();
+    let delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 16; // lines -> px
+    else if (e.deltaMode === 2) delta *= container.clientHeight || 600; // pages
+    adjustByDeltaY(delta * manualSensitivity);
+  }
+
+  function onPointerDown(e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    pointerDown = true;
+    beginManual();
+    lastY = e.clientY;
+  }
+
+  function onPointerMove(e) {
+    if (!pointerDown) return;
+    const y = e.clientY;
+    const dy = y - lastY;
+    lastY = y;
+    e.preventDefault();
+    // Dragging up should move content down (natural feel): invert dy
+    adjustByDeltaY(dy * manualSensitivity * -1);
+  }
+
+  function onPointerUp() {
+    pointerDown = false;
+    scheduleResume();
+  }
+
+  function onTouchStart(e) {
+    pointerDown = true;
+    beginManual();
+    lastY = e.touches[0]?.clientY || lastY;
+  }
+
+  function onTouchMove(e) {
+    if (!pointerDown) return;
+    const y = e.touches[0]?.clientY || lastY;
+    const dy = y - lastY;
+    lastY = y;
+    e.preventDefault();
+    adjustByDeltaY(dy * manualSensitivity * -1);
+  }
+
+  function onTouchEnd() {
+    pointerDown = false;
+    scheduleResume();
+  }
+
+  container.addEventListener("wheel", onWheel, { passive: false });
+  container.addEventListener("pointerdown", onPointerDown);
+  window.addEventListener("pointermove", onPointerMove, { passive: false });
+  window.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("pointercancel", onPointerUp);
+  container.addEventListener("touchstart", onTouchStart, { passive: false });
+  container.addEventListener("touchmove", onTouchMove, { passive: false });
+  container.addEventListener("touchend", onTouchEnd);
+  container.addEventListener("touchcancel", onTouchEnd);
+}
+
+let captionRaf = null;
+function startCaptionRaf() {
+  if (captionRaf) return;
+  lastTick = performance.now();
+  const tick = (now) => {
+    captionRaf = requestAnimationFrame(tick);
+    if (!audio) return;
+    const dt = Math.max(0, (now - lastTick) / 1000);
+    lastTick = now;
+
+    if (!userScrollingCaptions) {
+      // Follow audio position smoothly
+      const t = audio.currentTime || 0;
+      updateScrollForTime(t);
+      // Smoothly move toward target
+      const rate = 12; // higher is snappier
+      const alpha = 1 - Math.exp(-rate * dt);
+      setCaptionPos(captionPosPx + (captionTargetPx - captionPosPx) * alpha);
+    }
+  };
+  captionRaf = requestAnimationFrame(tick);
+}
+
+function stopCaptionRaf() {
+  if (captionRaf) {
+    cancelAnimationFrame(captionRaf);
+    captionRaf = null;
+  }
+}
+
+function recalcCaptionMetrics() {
+  const container = document.querySelector(".caption-box");
+  const scrollDiv = document.querySelector(".caption-scroll");
+  if (!container || !scrollDiv) return;
+  const ch = container.clientHeight || 0;
+  const sh = scrollDiv.scrollHeight || 0;
+  // Start just below the bottom of the visible box
+  const startOffset = ch; // dynamic, matches container height
+  maxScrollPx = Math.max(0, (sh - ch) + startOffset);
+}
+
+function setCaptionPos(px) {
+  const container = document.querySelector(".caption-box");
+  const scrollDiv = document.querySelector(".caption-scroll");
+  if (!container || !scrollDiv) return;
+  recalcCaptionMetrics();
+  captionPosPx = Math.max(0, Math.min(maxScrollPx, px || 0));
+  // Positive translate moves content down; offset keeps initial position below the box
+  const startOffset = container.clientHeight || 0;
+  // Nudge up by 20px overall (decrease translateY by 20)
+  scrollDiv.style.transform = `translateY(${startOffset - captionPosPx - 20}px)`;
+}
+
+// Removed CSS animation init; JS-driven transform handles all scrolling now.
 
 (function globalShortcutsSeekBracketsSimple() {
   const audioEl = document.querySelector("audio");
