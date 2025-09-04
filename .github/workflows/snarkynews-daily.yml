@@ -12,6 +12,6 @@ jobs:
     steps:
       - name: Call your Render endpoint
         run: |
-          curl -X POST -H "Authorization: Bearer JOB_AUTH_TOKEN" https://news-for-schmucks.onrender.com/run-job
+          curl -sS -X POST -H "Authorization: Bearer ${{ secrets.JOB_AUTH_TOKEN }}" https://news-for-schmucks.onrender.com/run-job
 
     
