@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { sendDiscordWebhook } from "./backend/utils/notify.js";
 import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
- 
+import { timingSafeEqual } from 'crypto';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,11 +56,38 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
   }
 });
 
-//
+// Simple token helpers
+function extractBearerToken(req) {
+  const auth = req.get('authorization') || '';
+  if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim();
+  const headerToken = req.get('x-job-token');
+  if (headerToken) return String(headerToken).trim();
+  if (req.query && req.query.token) return String(req.query.token);
+  return '';
+}
 
-// Optional: manual trigger for debugging or webhook pinging
-app.get("/run-job", async (req, res) => {
+function tokensMatch(expected, provided) {
   try {
+    const a = Buffer.from(String(expected));
+    const b = Buffer.from(String(provided));
+    return a.length === b.length && timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+// Optional: manual trigger for debugging or webhook pinging (secured)
+app.post("/run-job", async (req, res) => {
+  try {
+    const expected = process.env.JOB_AUTH_TOKEN;
+    const provided = extractBearerToken(req);
+
+    if (!expected || !tokensMatch(expected, provided)) {
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+      console.warn(`[/run-job] Unauthorized attempt from ${ip}`);
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+
     await runJob();
     res.status(200).json({ ok: true, message: "Job executed." });
     sendDiscordWebhook(`News-for-Schmucks job executed`);
