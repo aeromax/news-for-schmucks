@@ -14,7 +14,12 @@ export async function summarizeNews(apiKey, urls) {
             { role: "system", content: SYSTEM_PROMPT },
             {
                 role: "user",
-                content: `Extract and summarize the text from these article links: ${urls}. Provide quick commentary on 8 of them. Preface each headline with a number. Insert the headline in bold. Don't include links. Entire read should be < 3 minutes. Start with: \"Welcome to News for Schmucks.\"`
+                content: `Extract and summarize the text from these article links: ${urls}.
+Return exactly 8 items.
+Format each item exactly as: N. **Headline** — one-sentence take.
+No labels or section headers. Do not write the words "Commentary", "Analysis", or "Thoughts" anywhere.
+Don't include links. Entire read should be < 3 minutes.
+Start with: \"Welcome to News for Schmucks.\"`
             }
         ],
         temperature: 1,
@@ -22,8 +27,9 @@ export async function summarizeNews(apiKey, urls) {
     });
 
     const content = response.output_text ?? (response.output?.[0]?.content?.[0]?.text ?? "");
-    const split = content
-        .split(/\n+/);
+    const split = content.split(/\n+/);
+    // Defensive cleanup: strip any accidental "Commentary:" labels (including *Commentary*:)
+    const cleaned = split.map(line => line.replace(/\*?Commentary\*?:\s*/ig, ""));
 
-    return { "text": split };
+    return { "text": cleaned };
 }
