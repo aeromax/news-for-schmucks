@@ -2,7 +2,7 @@ name: Run SnarkyNews Daily
 
 on:
   schedule:
-    - cron: '0 1 * * *'  # runs every day at 1am UTC
+    - cron: '0 6 * * *'  # runs every day at 1am EST (06:00 UTC). Note: during EDT this is 2am local.
   workflow_dispatch:     # optional: lets you trigger it manually in the Actions tab
 
 jobs:
