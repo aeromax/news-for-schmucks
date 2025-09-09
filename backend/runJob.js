@@ -7,6 +7,7 @@ import { saveFiles } from "./services/saveFiles.js";
 import { env } from "./utils/env.js";
 import { getAudioDurationFromBuffer } from "./services/getDuration.js";
 import { sendDiscordWebhook } from "./utils/notify.js";
+import { logSummary } from "./services/summaryLogger.js";
 
 export async function runJob() {
   console.log(`[RunJob] Starting News for Schmucks job...`);
@@ -16,6 +17,8 @@ export async function runJob() {
   try {
     const urls = await fetchHeadlines(env.NEWS_API_KEY);
     const summary = await summarizeNews(env.OPENAI_API_KEY, urls);
+    // Append the raw generated summary to persistent JSONL log
+    await logSummary(summary, urls, "./");
     console.log(summary);
 
     const cleanText = clean(summary);
