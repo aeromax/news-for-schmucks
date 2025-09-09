@@ -6,6 +6,7 @@ import { sendDiscordWebhook } from "./backend/utils/notify.js";
 import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 import { timingSafeEqual } from 'crypto';
+import fs from "fs/promises";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,6 +76,273 @@ function tokensMatch(expected, provided) {
     return false;
   }
 }
+
+// Simple logs password extractor (query, header, or Bearer)
+function extractLogsPassword(req) {
+  const q = req.query?.password ? String(req.query.password) : '';
+  if (q) return q;
+  const header = req.get('x-password') || req.get('x-logs-password');
+  if (header) return String(header);
+  const auth = req.get('authorization') || '';
+  if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim();
+  return '';
+}
+
+// Password-protected endpoint to view JSONL summary logs
+// Usage: GET /logs?password=...&date=YYYY-MM-DD&limit=50
+app.get('/logs', async (req, res) => {
+  try {
+    const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
+    const provided = extractLogsPassword(req);
+
+    if (!expected || !tokensMatch(expected, provided)) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const date = (req.query?.date ? String(req.query.date) : `${yyyy}-${mm}-${dd}`).slice(0, 10);
+
+    const limit = Math.max(0, Math.min(1000, parseInt(String(req.query?.limit || '200'), 10) || 200));
+
+    const logsDir = path.join(storagePath, 'summaries');
+    const filePath = path.join(logsDir, `${date}.jsonl`);
+
+    const text = await fs.readFile(filePath, 'utf8').catch(err => {
+      if (err && err.code === 'ENOENT') return null;
+      throw err;
+    });
+
+    if (text == null) {
+      return res.status(404).json({ ok: false, error: 'No logs for that date', date });
+    }
+
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    const tail = limit > 0 ? lines.slice(-limit) : lines;
+    const entries = [];
+    for (const line of tail) {
+      try {
+        entries.push(JSON.parse(line));
+      } catch {
+        entries.push({ parse_error: true, raw: line });
+      }
+    }
+
+    res.json({ ok: true, date, count: entries.length, entries });
+  } catch (err) {
+    console.error('[/logs] error', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
+  }
+});
+
+// List available log dates (filenames)
+// GET /logs/dates?password=...
+app.get('/logs/dates', async (req, res) => {
+  try {
+    const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
+    const provided = extractLogsPassword(req);
+    if (!expected || !tokensMatch(expected, provided)) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
+
+    const logsDir = path.join(storagePath, 'summaries');
+    let files = [];
+    try {
+      files = await fs.readdir(logsDir);
+    } catch (err) {
+      if (err && err.code === 'ENOENT') return res.json({ ok: true, dates: [] });
+      throw err;
+    }
+
+    const dates = files
+      .filter(name => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(name))
+      .map(name => name.replace(/\.jsonl$/, ''))
+      .sort();
+
+    res.json({ ok: true, dates });
+  } catch (err) {
+    console.error('[/logs/dates] error', err);
+    res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
+  }
+});
+
+// Simple HTML viewer for logs with selection
+// GET /logs/view?password=...&date=YYYY-MM-DD
+app.get('/logs/view', async (req, res) => {
+  try {
+    const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
+    const provided = extractLogsPassword(req);
+    if (!expected || !tokensMatch(expected, provided)) {
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      return res.status(401).send('<!doctype html><html><body><h1>Unauthorized</h1><p>Missing or incorrect password.</p></body></html>');
+    }
+
+    const password = provided;
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const initialDate = (req.query?.date ? String(req.query.date) : `${yyyy}-${mm}-${dd}`).slice(0, 10);
+
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Logs Viewer</title>
+    <style>
+      :root { --bg:#0b0c10; --fg:#eaf0f6; --muted:#a0aab8; --accent:#4aa3ff; --card:#15171c; }
+      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+      header { padding:12px 16px; background:#101218; border-bottom:1px solid #22262d; display:flex; gap:12px; align-items:center; }
+      h1 { font-size:16px; margin:0; font-weight:600; }
+      main { display:grid; grid-template-columns: 360px 1fr; gap:0; height: calc(100vh - 56px); }
+      aside { border-right:1px solid #22262d; background:var(--card); overflow:auto; }
+      section { overflow:auto; }
+      .controls { display:flex; gap:8px; align-items:center; }
+      select, input, button { background:#0e1117; color:var(--fg); border:1px solid #333a44; border-radius:6px; padding:6px 8px; }
+      button { cursor:pointer; }
+      ul { list-style:none; margin:0; padding:0; }
+      li { border-bottom:1px solid #20242b; padding:10px 12px; cursor:pointer; }
+      li:hover { background:#0f1218; }
+      li.active { background:#0b1220; border-left:3px solid var(--accent); padding-left:9px; }
+      .muted { color:var(--muted); font-size:12px; }
+      pre { margin:0; white-space:pre-wrap; word-break:break-word; }
+      .entry-actions { display:flex; gap:8px; padding:8px; border-bottom:1px solid #22262d; background:var(--card); }
+      .empty { padding:24px; color:var(--muted); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>News for Schmucks — Logs</h1>
+      <div class="controls">
+        <label for="date">Date:</label>
+        <select id="date"></select>
+        <button id="refresh">Refresh</button>
+      </div>
+    </header>
+    <main>
+      <aside>
+        <ul id="list"></ul>
+      </aside>
+      <section>
+        <div class="entry-actions">
+          <button id="copy">Copy JSON</button>
+          <button id="download">Download JSON</button>
+        </div>
+        <pre id="detail" class="empty">Select an entry to view details…</pre>
+      </section>
+    </main>
+    <script>
+      const password = ${JSON.stringify(password)};
+      const initialDate = ${JSON.stringify(initialDate)};
+
+      const elDate = document.getElementById('date');
+      const elList = document.getElementById('list');
+      const elDetail = document.getElementById('detail');
+      const elCopy = document.getElementById('copy');
+      const elDownload = document.getElementById('download');
+      const elRefresh = document.getElementById('refresh');
+
+      let entries = [];
+      let activeIndex = -1;
+
+      function fmt(ts) {
+        try { return new Date(ts).toLocaleString(); } catch { return ts; }
+      }
+
+      async function fetchDates() {
+        const res = await fetch('/logs/dates?password=' + encodeURIComponent(password));
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Failed to load dates');
+        return data.dates;
+      }
+
+      async function fetchEntries(date) {
+        const res = await fetch('/logs?password=' + encodeURIComponent(password) + '&date=' + encodeURIComponent(date) + '&limit=0');
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Failed to load logs');
+        return data.entries || [];
+      }
+
+      function renderList(items) {
+        elList.innerHTML = '';
+        items.forEach((e, i) => {
+          const li = document.createElement('li');
+          li.dataset.index = String(i);
+          const preview = (Array.isArray(e.text) ? e.text.join('\n') : (e.text || '')).slice(0, 140).replace(/\n+/g, ' ');
+          li.innerHTML = '<div><strong>' + (i+1) + '.</strong> ' + (preview || '<span class="muted">(no text)</span>') + '</div>' +
+                         '<div class="muted">' + (e.urls?.length ? e.urls.join(', ') : '') + '</div>' +
+                         '<div class="muted">' + (e.timestamp ? fmt(e.timestamp) : '') + '</div>';
+          li.addEventListener('click', () => selectIndex(i));
+          elList.appendChild(li);
+        });
+      }
+
+      function selectIndex(i) {
+        activeIndex = i;
+        document.querySelectorAll('#list li').forEach((li, idx) => li.classList.toggle('active', idx === i));
+        const e = entries[i];
+        elDetail.classList.remove('empty');
+        elDetail.textContent = JSON.stringify(e, null, 2);
+      }
+
+      elCopy.addEventListener('click', async () => {
+        if (activeIndex < 0) return;
+        try {
+          await navigator.clipboard.writeText(elDetail.textContent);
+        } catch {}
+      });
+
+      elDownload.addEventListener('click', () => {
+        if (activeIndex < 0) return;
+        const e = entries[activeIndex];
+        const blob = new Blob([JSON.stringify(e, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const date = elDate.value || 'logs';
+        a.download = `log-${date}-entry-${activeIndex+1}.json`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      });
+
+      elRefresh.addEventListener('click', async () => {
+        if (!elDate.value) return;
+        entries = await fetchEntries(elDate.value);
+        activeIndex = -1;
+        renderList(entries);
+        elDetail.textContent = 'Select an entry to view details…';
+        elDetail.classList.add('empty');
+      });
+
+      (async function init() {
+        try {
+          const dates = await fetchDates();
+          if (dates.length === 0) {
+            elDate.innerHTML = '<option value="">No logs found</option>';
+            return;
+          }
+          let selected = initialDate && dates.includes(initialDate) ? initialDate : dates[dates.length-1];
+          elDate.innerHTML = dates.map(d => '<option ' + (d===selected?'selected':'') + '>' + d + '</option>').join('');
+          elDate.addEventListener('change', () => { activeIndex = -1; elDetail.textContent = 'Select an entry to view details…'; elDetail.classList.add('empty'); });
+          entries = await fetchEntries(selected);
+          renderList(entries);
+        } catch (err) {
+          document.body.innerHTML = '<pre style="padding:16px">Failed to load logs. ' + (err?.message || err) + '</pre>';
+        }
+      })();
+    </script>
+  </body>
+</html>`;
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('[/logs/view] error', err);
+    res.status(500).set('Content-Type', 'text/html; charset=utf-8').send('<!doctype html><html><body><h1>Error</h1><pre>' + (err?.message || 'Unknown error') + '</pre></body></html>');
+  }
+});
 
 // Optional: manual trigger for debugging or webhook pinging (secured)
 app.post("/run-job", async (req, res) => {
