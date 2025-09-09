@@ -77,10 +77,8 @@ function tokensMatch(expected, provided) {
   }
 }
 
-// Simple logs password extractor (query, header, or Bearer)
+// Simple logs password extractor (headers only; do not allow query)
 function extractLogsPassword(req) {
-  const q = req.query?.password ? String(req.query.password) : '';
-  if (q) return q;
   const header = req.get('x-password') || req.get('x-logs-password');
   if (header) return String(header);
   const auth = req.get('authorization') || '';
@@ -89,7 +87,7 @@ function extractLogsPassword(req) {
 }
 
 // Password-protected endpoint to view JSONL summary logs
-// Usage: GET /logs?password=...&date=YYYY-MM-DD&limit=50
+// Usage: GET /logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
 app.get('/logs', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
@@ -138,7 +136,7 @@ app.get('/logs', async (req, res) => {
 });
 
 // List available log dates (filenames)
-// GET /logs/dates?password=...
+// GET /logs/dates (send password via header: x-logs-password)
 app.get('/logs/dates', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
@@ -169,17 +167,9 @@ app.get('/logs/dates', async (req, res) => {
 });
 
 // Simple HTML viewer for logs with selection
-// GET /logs/view?password=...&date=YYYY-MM-DD
+// GET /logs/view?date=YYYY-MM-DD (enter password on page; sent via headers)
 app.get('/logs/view', async (req, res) => {
   try {
-    const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
-    const provided = extractLogsPassword(req);
-    if (!expected || !tokensMatch(expected, provided)) {
-      res.set('Content-Type', 'text/html; charset=utf-8');
-      return res.status(401).send('<!doctype html><html><body><h1>Unauthorized</h1><p>Missing or incorrect password.</p></body></html>');
-    }
-
-    const password = provided;
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -189,12 +179,12 @@ app.get('/logs/view', async (req, res) => {
     const html = `<!doctype html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
     <title>Logs Viewer</title>
     <style>
       :root { --bg:#0b0c10; --fg:#eaf0f6; --muted:#a0aab8; --accent:#4aa3ff; --card:#15171c; }
-      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+      body { margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
       header { padding:12px 16px; background:#101218; border-bottom:1px solid #22262d; display:flex; gap:12px; align-items:center; }
       h1 { font-size:16px; margin:0; font-weight:600; }
       main { display:grid; grid-template-columns: 360px 1fr; gap:0; height: calc(100vh - 56px); }
@@ -211,32 +201,58 @@ app.get('/logs/view', async (req, res) => {
       pre { margin:0; white-space:pre-wrap; word-break:break-word; }
       .entry-actions { display:flex; gap:8px; padding:8px; border-bottom:1px solid #22262d; background:var(--card); }
       .empty { padding:24px; color:var(--muted); }
+      /* Login */
+      #login { max-width: 420px; margin: 18vh auto; background: var(--card); padding: 24px; border-radius: 10px; border:1px solid #2a2f3a; }
+      #login h2 { margin: 0 0 12px; font-size: 18px; }
+      #login p { color: var(--muted); margin: 0 0 16px; }
+      #login form { display:flex; gap: 8px; }
+      #error { color: #ff6b6b; margin-top: 10px; min-height: 1em; }
+      #app { display: none; }
     </style>
   </head>
   <body>
-    <header>
-      <h1>News for Schmucks — Logs</h1>
-      <div class="controls">
-        <label for="date">Date:</label>
-        <select id="date"></select>
-        <button id="refresh">Refresh</button>
-      </div>
-    </header>
-    <main>
-      <aside>
-        <ul id="list"></ul>
-      </aside>
-      <section>
-        <div class="entry-actions">
-          <button id="copy">Copy JSON</button>
-          <button id="download">Download JSON</button>
+    <div id=\"login\">
+      <h2>Enter Logs Password</h2>
+      <p>Access to logs requires a password.</p>
+      <form id=\"loginForm\">
+        <input id=\"pw\" type=\"password\" placeholder=\"Password\" autocomplete=\"current-password\" required />
+        <button type=\"submit\">View Logs</button>
+      </form>
+      <div id=\"error\"></div>
+    </div>
+
+    <div id=\"app\">
+      <header>
+        <h1>News for Schmucks — Logs</h1>
+        <div class=\"controls\">
+          <label for=\"date\">Date:</label>
+          <select id=\"date\"></select>
+          <button id=\"refresh\">Refresh</button>
         </div>
-        <pre id="detail" class="empty">Select an entry to view details…</pre>
-      </section>
-    </main>
+      </header>
+      <main>
+        <aside>
+          <ul id=\"list\"></ul>
+        </aside>
+        <section>
+          <div class=\"entry-actions\">
+            <button id=\"copy\">Copy JSON</button>
+            <button id=\"download\">Download JSON</button>
+          </div>
+          <pre id=\"detail\" class=\"empty\">Select an entry to view details…</pre>
+        </section>
+      </main>
+    </div>
+
     <script>
-      const password = ${JSON.stringify(password)};
       const initialDate = ${JSON.stringify(initialDate)};
+      let password = '';
+
+      const elLogin = document.getElementById('login');
+      const elForm = document.getElementById('loginForm');
+      const elPw = document.getElementById('pw');
+      const elErr = document.getElementById('error');
+      const elApp = document.getElementById('app');
 
       const elDate = document.getElementById('date');
       const elList = document.getElementById('list');
@@ -253,16 +269,16 @@ app.get('/logs/view', async (req, res) => {
       }
 
       async function fetchDates() {
-        const res = await fetch('/logs/dates?password=' + encodeURIComponent(password));
+        const res = await fetch('/logs/dates', { headers: { 'x-logs-password': password } });
         const data = await res.json();
-        if (!data.ok) throw new Error(data.error || 'Failed to load dates');
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load dates');
         return data.dates;
       }
 
       async function fetchEntries(date) {
-        const res = await fetch('/logs?password=' + encodeURIComponent(password) + '&date=' + encodeURIComponent(date) + '&limit=0');
+        const res = await fetch('/logs?date=' + encodeURIComponent(date) + '&limit=0', { headers: { 'x-logs-password': password } });
         const data = await res.json();
-        if (!data.ok) throw new Error(data.error || 'Failed to load logs');
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load logs');
         return data.entries || [];
       }
 
@@ -271,10 +287,10 @@ app.get('/logs/view', async (req, res) => {
         items.forEach((e, i) => {
           const li = document.createElement('li');
           li.dataset.index = String(i);
-          const preview = (Array.isArray(e.text) ? e.text.join('\n') : (e.text || '')).slice(0, 140).replace(/\n+/g, ' ');
-          li.innerHTML = '<div><strong>' + (i+1) + '.</strong> ' + (preview || '<span class="muted">(no text)</span>') + '</div>' +
-                         '<div class="muted">' + (e.urls?.length ? e.urls.join(', ') : '') + '</div>' +
-                         '<div class="muted">' + (e.timestamp ? fmt(e.timestamp) : '') + '</div>';
+          const preview = (Array.isArray(e.text) ? e.text.join('\\n') : (e.text || '')).slice(0, 140).replace(/\\n+/g, ' ');
+          li.innerHTML = '<div><strong>' + (i+1) + '.</strong> ' + (preview || '<span class=\\"muted\\">(no text)</span>') + '</div>' +
+                         '<div class=\\"muted\\">' + (e.urls?.length ? e.urls.join(', ') : '') + '</div>' +
+                         '<div class=\\"muted\\">' + (e.timestamp ? fmt(e.timestamp) : '') + '</div>';
           li.addEventListener('click', () => selectIndex(i));
           elList.appendChild(li);
         });
@@ -288,26 +304,24 @@ app.get('/logs/view', async (req, res) => {
         elDetail.textContent = JSON.stringify(e, null, 2);
       }
 
-      elCopy.addEventListener('click', async () => {
+      elCopy?.addEventListener('click', async () => {
         if (activeIndex < 0) return;
-        try {
-          await navigator.clipboard.writeText(elDetail.textContent);
-        } catch {}
+        try { await navigator.clipboard.writeText(elDetail.textContent); } catch {}
       });
 
-      elDownload.addEventListener('click', () => {
+      elDownload?.addEventListener('click', () => {
         if (activeIndex < 0) return;
         const e = entries[activeIndex];
         const blob = new Blob([JSON.stringify(e, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         const date = elDate.value || 'logs';
-        a.download = `log-${date}-entry-${activeIndex+1}.json`;
-        a.click();
+        a.download = 'log-' + date + '-entry-' + (activeIndex+1) + '.json';
+          a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       });
 
-      elRefresh.addEventListener('click', async () => {
+      elRefresh?.addEventListener('click', async () => {
         if (!elDate.value) return;
         entries = await fetchEntries(elDate.value);
         activeIndex = -1;
@@ -316,11 +330,11 @@ app.get('/logs/view', async (req, res) => {
         elDetail.classList.add('empty');
       });
 
-      (async function init() {
+      async function boot() {
         try {
           const dates = await fetchDates();
           if (dates.length === 0) {
-            elDate.innerHTML = '<option value="">No logs found</option>';
+            elDate.innerHTML = '<option value=\"\">No logs found</option>';
             return;
           }
           let selected = initialDate && dates.includes(initialDate) ? initialDate : dates[dates.length-1];
@@ -328,10 +342,19 @@ app.get('/logs/view', async (req, res) => {
           elDate.addEventListener('change', () => { activeIndex = -1; elDetail.textContent = 'Select an entry to view details…'; elDetail.classList.add('empty'); });
           entries = await fetchEntries(selected);
           renderList(entries);
+          elLogin.style.display = 'none';
+          elApp.style.display = 'block';
         } catch (err) {
-          document.body.innerHTML = '<pre style="padding:16px">Failed to load logs. ' + (err?.message || err) + '</pre>';
+          elErr.textContent = err?.message || 'Unauthorized';
         }
-      })();
+      }
+
+      elForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        password = elPw.value || '';
+        elErr.textContent = '';
+        boot();
+      });
     </script>
   </body>
 </html>`;
