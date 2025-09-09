@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "run": "node ./backend/runJob.js",
+    "run:text": "node ./backend/runTextOnly.js",
     "dev": "PORT=8080 node index.js"
   },
   "dependencies": {
