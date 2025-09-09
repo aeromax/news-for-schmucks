@@ -86,9 +86,9 @@ function extractLogsPassword(req) {
   return '';
 }
 
-// Password-protected endpoint to view JSONL summary logs
-// Usage: GET /logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
-app.get('/logs', async (req, res) => {
+// Password-protected endpoint to view JSONL summary logs (API)
+// Usage: GET /api/logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
+app.get('/api/logs', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
     const provided = extractLogsPassword(req);
@@ -135,9 +135,9 @@ app.get('/logs', async (req, res) => {
   }
 });
 
-// List available log dates (filenames)
-// GET /logs/dates (send password via header: x-logs-password)
-app.get('/logs/dates', async (req, res) => {
+// List available log dates (filenames) (API)
+// GET /api/logs/dates (send password via header: x-logs-password)
+app.get('/api/logs/dates', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
     const provided = extractLogsPassword(req);
@@ -167,8 +167,8 @@ app.get('/logs/dates', async (req, res) => {
 });
 
 // Simple HTML viewer for logs with selection
-// GET /logs/view?date=YYYY-MM-DD (enter password on page; sent via headers)
-app.get('/logs/view', async (req, res) => {
+// GET /logs?date=YYYY-MM-DD (enter password on page; sent via headers)
+app.get('/logs', async (req, res) => {
   try {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -269,14 +269,14 @@ app.get('/logs/view', async (req, res) => {
       }
 
       async function fetchDates() {
-        const res = await fetch('/logs/dates', { headers: { 'x-logs-password': password } });
+        const res = await fetch('/api/logs/dates', { headers: { 'x-logs-password': password } });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load dates');
         return data.dates;
       }
 
       async function fetchEntries(date) {
-        const res = await fetch('/logs?date=' + encodeURIComponent(date) + '&limit=0', { headers: { 'x-logs-password': password } });
+        const res = await fetch('/api/logs?date=' + encodeURIComponent(date) + '&limit=0', { headers: { 'x-logs-password': password } });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load logs');
         return data.entries || [];
@@ -362,7 +362,7 @@ app.get('/logs/view', async (req, res) => {
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
-    console.error('[/logs/view] error', err);
+    console.error('[/logs] error', err);
     res.status(500).set('Content-Type', 'text/html; charset=utf-8').send('<!doctype html><html><body><h1>Error</h1><pre>' + (err?.message || 'Unknown error') + '</pre></body></html>');
   }
 });
