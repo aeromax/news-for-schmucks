@@ -3,12 +3,15 @@ import { fetchHeadlines } from "./services/fetchHeadlines.js";
 import { summarizeNews } from "./services/summarizeNews.js";
 import { clean } from "./services/clean.js";
 import { env } from "./utils/env.js";
+import { logSummary } from "./services/summaryLogger.js";
 
 export async function runTextOnlyJob() {
   console.log(`[RunTextOnly] Starting text-only generation...`);
   try {
     const urls = await fetchHeadlines(env.NEWS_API_KEY);
     const summary = await summarizeNews(env.OPENAI_API_KEY, urls);
+    // Append the raw generated summary to persistent JSONL log
+    await logSummary(summary, urls, "./");
     const cleanText = clean(summary);
 
     // Output the transcript JSON to stdout for tests and inspection
@@ -27,4 +30,3 @@ export async function runTextOnlyJob() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   runTextOnlyJob();
 }
-
