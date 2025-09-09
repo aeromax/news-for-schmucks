@@ -14,8 +14,7 @@ export async function summarizeNews(apiKey, urls) {
             { role: "system", content: SYSTEM_PROMPT },
             {
                 role: "user",
-                content: `Extract and summarize the text from these article links: ${urls}.
-Return exactly 8 items.
+                content: `Extract and summarize the text in the articles from these links: ${urls}.
 Start the output by welcoming the viewer to "News for Schmucks."
 For each item, use ONE line in this exact format:
 **N. Headline** — snappy commentary
@@ -25,7 +24,7 @@ Important formatting rules:
 - Put the number INSIDE the bold with the headline (e.g., **1. Headline**).
 - Do not include URLs or markdown links.
 - Do not preface commentary with the word "Commentary".
-- Keep the entire read about 3 minutes long."`
+- Keep the entire summary 3 minutes long."`
             }
         ],
         temperature: 1,

@@ -14,6 +14,20 @@ export async function fetchHeadlines(apiKey) {
         throw new Error("No articles found in response.");
     }
 
-    const urls = articles.map(a => a.url).join(",");
+    // Randomly select 8 stories (or fewer if not available)
+    const sampleSize = Math.min(8, articles.length);
+    const picked = shuffle(articles.slice()).slice(0, sampleSize);
+
+    // Map to unique URLs and join as CSV
+    const urls = Array.from(new Set(picked.map(a => a.url))).join(",");
     return urls;
+}
+
+// Fisher–Yates shuffle for unbiased random order
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
 }
