@@ -6,12 +6,12 @@ import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import { env } from "./utils/env.js";
 import { getAudioDurationFromBuffer } from "./services/getDuration.js";
-import { sendDiscordWebhook } from "./utils/notify.js";
+import { notify } from "./utils/notifier.js";
 import { logSummary } from "./services/summaryLogger.js";
 
 export async function runJob() {
   console.log(`[RunJob] Starting News for Schmucks job...`);
-  sendDiscordWebhook(`News for Schmucks job running`);
+  notify(`⏱️Job running`);
 
 
   try {
@@ -47,15 +47,20 @@ function showErr(err) {
   if (Buffer.isBuffer(data)) {
     const text = data.toString("utf8");
     try {
-      sendDiscordWebhook("[HTTP Error JSON]", JSON.parse(text));
       console.error("[HTTP Error JSON]", JSON.parse(text));
+      notify(`💥[Backend job: HTTP Error JSON]\n${text}`);
     } catch {
-      sendDiscordWebhook("[HTTP Error Text]", text);
-      console.error("[HTTP Error Text]", text);
+      notify(`💥[Backend job: HTTP Error Text]\n${text}`);
+      console.error("💥[Backend job: HTTP Error Text]", text);
     }
   } else {
-    sendDiscordWebhook("[Error]", data);
-    console.error("[Error]", data);
+    console.error("💥[Backend job: Error]", data);
+    try {
+      const msg = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      notify(`[💥Backend job: Error]\n${msg}`);
+    } catch {
+      notify(`💥[Backend job: Error]`);
+    }
   }
 }
 
