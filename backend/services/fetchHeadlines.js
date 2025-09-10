@@ -1,9 +1,10 @@
 // services/fetchHeadlines.js
 
 import axios from "axios";
+import { logNotify } from "../utils/notifier.js";
 
 export async function fetchHeadlines(apiKey) {
-    console.log("[Fetch] Getting top headlines...");
+    logNotify("[Fetch] Getting top headlines...");
 
     const res = await axios.get(
         `https://newsapi.org/v2/top-headlines?source=bbc_news&country=us&pageSize=15&apiKey=${apiKey}`

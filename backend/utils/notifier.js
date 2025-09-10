@@ -7,60 +7,29 @@ import { URL } from 'url';
 // Discord content limit per message
 const DISCORD_LIMIT = 2000;
 
-// Internal state for configuration
-const state = {
-  channels: {}, // name -> webhook URL
-  defaultChannel: undefined,
-  defaultUsername: undefined,
+// Code-based global defaults. Edit these values directly if you prefer
+// not to rely on environment variables.
+// NOTE: Do not commit real webhook URLs to source control.
+const codeDefaults = {
+  channels: {
+    // default: 'https://discord.com/api/webhooks/ID/TOKEN',
+  },
+  defaultChannel: 'default',
+  defaultUsername: 'News for Schmucks',
   defaultAvatarUrl: undefined,
   timeoutMs: 10000,
 };
 
-function parseEnvChannels() {
-  const map = {};
-  const json = process.env.DISCORD_WEBHOOKS_JSON;
-  if (json) {
-    try {
-      const obj = JSON.parse(json);
-      if (obj && typeof obj === 'object') {
-        for (const [k, v] of Object.entries(obj)) {
-          if (typeof v === 'string') map[k] = v;
-        }
-      }
-    } catch { /* ignore invalid JSON */ }
-  }
+// Internal state for configuration (initialized from codeDefaults)
+const state = {
+  channels: { ...(codeDefaults.channels || {}) },
+  defaultChannel: codeDefaults.defaultChannel,
+  defaultUsername: codeDefaults.defaultUsername,
+  defaultAvatarUrl: codeDefaults.defaultAvatarUrl,
+  timeoutMs: codeDefaults.timeoutMs,
+};
 
-  const flat = process.env.DISCORD_WEBHOOKS;
-  if (flat) {
-    flat.split(/;+/).forEach(pair => {
-      const [k, v] = pair.split('=');
-      if (k && v) map[k.trim()] = v.trim();
-    });
-  }
-
-  // Compatibility: single URL via DISCORD_WEBHOOK_URL
-  if (process.env.DISCORD_WEBHOOK_URL) {
-    const ch = process.env.DISCORD_DEFAULT_CHANNEL || 'default';
-    map[ch] = String(process.env.DISCORD_WEBHOOK_URL).trim();
-  }
-
-  return map;
-}
-
-function bootstrapFromEnv() {
-  const envMap = parseEnvChannels();
-  if (Object.keys(envMap).length) state.channels = { ...state.channels, ...envMap };
-  if (process.env.DISCORD_DEFAULT_CHANNEL) state.defaultChannel = process.env.DISCORD_DEFAULT_CHANNEL;
-  if (!state.defaultChannel && process.env.DISCORD_WEBHOOK_URL) state.defaultChannel = 'default';
-  if (process.env.DISCORD_USERNAME) state.defaultUsername = process.env.DISCORD_USERNAME;
-  if (process.env.DISCORD_AVATAR_URL) state.defaultAvatarUrl = process.env.DISCORD_AVATAR_URL;
-  if (process.env.DISCORD_TIMEOUT_MS) {
-    const t = Number(process.env.DISCORD_TIMEOUT_MS);
-    if (!Number.isNaN(t) && t > 0) state.timeoutMs = t;
-  }
-}
-
-bootstrapFromEnv();
+// No environment bootstrapping — configuration is code-driven.
 
 export function configure(opts = {}) {
   if (opts.channels && typeof opts.channels === 'object') {
@@ -71,6 +40,8 @@ export function configure(opts = {}) {
   if (typeof opts.defaultAvatarUrl === 'string') state.defaultAvatarUrl = opts.defaultAvatarUrl;
   if (typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0) state.timeoutMs = opts.timeoutMs;
 }
+
+// configure(...) remains available for runtime tweaks if needed
 
 function toChunks(str, size) {
   const s = String(str);
@@ -140,7 +111,12 @@ export async function notify(a, b, c) {
 
   const name = channelName || state.defaultChannel;
   if (!name) throw new Error('No channel specified and no defaultChannel configured');
-  const webhook = state.channels[name];
+  let webhook = state.channels[name];
+  // Fallback: use DISCORD_WEBHOOK_URL from environment for the default channel
+  if (!webhook && name === 'default' && typeof process !== 'undefined' && process.env && process.env.DISCORD_WEBHOOK_URL) {
+    webhook = String(process.env.DISCORD_WEBHOOK_URL).trim();
+    if (webhook) state.channels[name] = webhook;
+  }
   if (!webhook) throw new Error(`No webhook URL configured for channel "${name}"`);
 
   if (typeof message !== 'string') message = String(message);
@@ -148,6 +124,15 @@ export async function notify(a, b, c) {
 
   const username = (overrides && overrides.username) || state.defaultUsername;
   const avatar_url = (overrides && overrides.avatarUrl) || state.defaultAvatarUrl;
+
+  // Allow rich formatting via embeds when provided (single payload)
+  if (overrides && Array.isArray(overrides.embeds) && overrides.embeds.length) {
+    const payload = { content: message.slice(0, DISCORD_LIMIT), embeds: overrides.embeds };
+    if (username) payload.username = username;
+    if (avatar_url) payload.avatar_url = avatar_url;
+    await postJson(webhook, payload, state.timeoutMs);
+    return;
+  }
 
   const chunks = toChunks(message, DISCORD_LIMIT);
   for (const [i, chunk] of chunks.entries()) {
@@ -163,3 +148,18 @@ export function getConfig() {
   return { ...state, channels: { ...state.channels } };
 }
 
+// Log to console and post to Discord concurrently (fire-and-forget for Discord)
+export function logNotify(message, overrides) {
+  try {
+    // Always log locally
+    // eslint-disable-next-line no-console
+    console.log(message);
+  } catch {}
+  try {
+    // Post to Discord without blocking the caller
+    Promise.resolve()
+      .then(() => notify(message, overrides))
+      // eslint-disable-next-line no-console
+      .catch((err) => console.error('[logNotify] notify failed:', err?.message || err));
+  } catch {}
+}

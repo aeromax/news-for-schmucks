@@ -4,33 +4,33 @@ import { summarizeNews } from "./services/summarizeNews.js";
 import { clean } from "./services/clean.js";
 import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
-import { env } from "./utils/env.js";
+import 'dotenv/config';
 import { getAudioDurationFromBuffer } from "./services/getDuration.js";
-import { notify } from "./utils/notifier.js";
+import { notify, logNotify } from "./utils/notifier.js";
 import { logSummary } from "./services/summaryLogger.js";
 
 export async function runJob() {
-  console.log(`[RunJob] Starting News for Schmucks job...`);
+  logNotify(`[RunJob] Starting News for Schmucks job...`);
   notify(`⏱️Job running`);
 
 
   try {
-    const urls = await fetchHeadlines(env.NEWS_API_KEY);
-    const summary = await summarizeNews(env.OPENAI_API_KEY, urls);
+    const urls = await fetchHeadlines(process.env.NEWS_API_KEY);
+    const summary = await summarizeNews(process.env.OPENAI_API_KEY, urls);
     // Append the raw generated summary to persistent JSONL log
     await logSummary(summary, urls, "./");
-    console.log(summary);
+    logNotify(summary);
 
     const cleanText = clean(summary);
 
-    const speech = await generateSpeech(env.OPENAI_API_KEY, cleanText);
+    const speech = await generateSpeech(process.env.OPENAI_API_KEY, cleanText);
 
     const duration = await getAudioDurationFromBuffer(speech);
     cleanText.duration = duration;
 
     await saveFiles("./", cleanText, speech);
 
-    console.log("✅ All done! Files written to storage directory.");
+    logNotify("✅ All done! Files written to storage directory.");
   } catch (err) {
     showErr(err);
     throw err; // bubble up so caller (cron, API endpoint) can handle
