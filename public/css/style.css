@@ -414,3 +414,12 @@ body {
     max-height: 240px;
   }
 }
+
+/* Footer */
+.site-footer {
+  width: 100%;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--light-gray);
+  padding: 0.5rem 0 0.75rem;
+}
