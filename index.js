@@ -44,13 +44,43 @@ app.get("/", (req, res) => {
 app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
   try {
     const ua = req.get('user-agent') || 'unknown';
-    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+    const ipRaw = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+    const ipFirst = String(ipRaw).split(',')[0].trim();
+    const ip = ipFirst.startsWith('::ffff:') ? ipFirst.slice(7) : ipFirst; // normalize IPv4-mapped IPv6
     const meta = req.body || {};
     const pathViewed = meta.path || req.originalUrl;
     const tz = meta.tz || 'unknown-tz';
     const lang = meta.lang || 'unknown-lang';
 
-    const msg = `🙋 Site view: ${pathViewed} | ip:${ip} | ua:${ua} | tz:${tz} | lang:${lang}`;
+    // Start with ip, then append host/city/region and a newline, then other fields
+    let msg = `🙋 Site view: ${pathViewed} ● ip:${ip}`;
+
+    // Try reverse DNS + geo lookup (non-fatal); add a newline right after this block
+    try {
+      const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '';
+      if (!isLocal) {
+        const url = `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,reverse,city,regionName,query`;
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } }).catch(() => null);
+        const data = resp ? await resp.json().catch(() => null) : null;
+        if (data && data.status === 'success') {
+          const host = data.reverse || 'n/a';
+          const city = data.city || 'n/a';
+          const region = data.regionName || 'n/a';
+          msg += ` ● host:${host} ● city:${city} ● region:${region}`;
+        } else {
+          msg += `\n`;
+        }
+      } else {
+        msg += ` ● host:local ● city:n/a ● region:n/a`;
+      }
+    } catch {
+      msg += `\n`;
+    }
+
+    // Append remaining metadata after the newline
+    // msg += ` | ua:${ua} | tz:${tz} | lang:${lang}`;
+    msg += ` | ua:${ua}`;
+
     await notify(msg);
     res.status(204).end();
   } catch (err) {
