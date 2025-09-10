@@ -2,7 +2,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { sendDiscordWebhook } from "./backend/utils/notify.js";
+import { notify } from "./backend/utils/notifier.js";
 import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 import { timingSafeEqual } from 'crypto';
@@ -48,11 +48,11 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
     const tz = meta.tz || 'unknown-tz';
     const lang = meta.lang || 'unknown-lang';
 
-    const msg = `Site view: ${pathViewed} | ip:${ip} | ua:${ua} | tz:${tz} | lang:${lang}`;
-    await sendDiscordWebhook(msg);
+    const msg = `🙋 Site view: ${pathViewed} | ip:${ip} | ua:${ua} | tz:${tz} | lang:${lang}`;
+    await notify(msg);
     res.status(204).end();
   } catch (err) {
-    console.error('[notify-view] error', err);
+    console.error('error', err);
     res.status(500).json({ ok: false });
   }
 });
@@ -381,16 +381,16 @@ app.post("/run-job", async (req, res) => {
 
     await runJob();
     res.status(200).json({ ok: true, message: "Job executed." });
-    sendDiscordWebhook(`News-for-Schmucks job executed`);
+    notify(`⏱️ Job executed`);
   } catch (err) {
     console.error("[/run-job] Failed:", err);
     res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
-    sendDiscordWebhook(`News-for-Schmucks job failed ${err}`);
+    notify(`💥Job failed ${err}`);
   }
 });
 
 app.listen(PORT, HOST, () => {
   console.log(`[Server] Listening on http://${HOST}:${PORT}`);
   console.log(`[Server] Serving static from: ${staticPath}`);
-  sendDiscordWebhook(`News-for-Schmucks backend started`);
+  notify(`⏱️ Backend started`);
 });
