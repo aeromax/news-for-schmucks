@@ -17,7 +17,7 @@ export async function runTextOnlyJob() {
 
     // Output the transcript JSON to stdout for tests and inspection
     // Matches the shape consumed by the frontend without writing files
-    logNotify(JSON.stringify({ captions: cleanText }, null, 2));
+    // logNotify(JSON.stringify({ captions: cleanText }, null, 2));
     logNotify("✅ Text-only generation complete (no audio, no save).");
   } catch (err) {
     // Keep error logging simple and local to avoid webhooks or file writes
