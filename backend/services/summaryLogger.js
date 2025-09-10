@@ -2,6 +2,7 @@
 
 import fs from "fs/promises";
 import path from "path";
+import { logNotify } from "../utils/notifier.js";
 
 // Append a log entry of the summarizeNews generation to a persistent JSONL file
 // One file per day: summaries/YYYY-MM-DD.jsonl
@@ -34,10 +35,9 @@ export async function logSummary(summary, urls, baseDir = "./") {
 
     const line = JSON.stringify(record) + "\n";
     await fs.appendFile(filePath, line, { encoding: 'utf8' });
-    console.log(`📝➡[Log] Appended summary to ${filePath}`);
+    logNotify(`📝➡[Log] Appended summary to ${filePath}`);
   } catch (err) {
     // Do not fail the job if logging fails; just report
     console.error("[Log] Failed to append summary log:", err?.stack || err);
   }
 }
-
