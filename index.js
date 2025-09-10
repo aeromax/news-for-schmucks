@@ -2,7 +2,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { notify } from "./backend/utils/notifier.js";
+import { notify, logNotify } from "./backend/utils/notifier.js";
 import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 import { timingSafeEqual } from 'crypto';
@@ -15,6 +15,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
+
+// Notifier is pre-configured via code defaults inside backend/utils/notifier.js
 
 // Where your built/static files live. Adjust to "public" or "build" if that's your setup.
 const STATIC_DIR = process.env.STATIC_DIR || "public";
@@ -90,7 +92,7 @@ function extractLogsPassword(req) {
 // Usage: GET /api/logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
 app.get('/api/logs', async (req, res) => {
   try {
-    const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
+    const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
 
     if (!expected || !tokensMatch(expected, provided)) {
@@ -139,7 +141,7 @@ app.get('/api/logs', async (req, res) => {
 // GET /api/logs/dates (send password via header: x-logs-password)
 app.get('/api/logs/dates', async (req, res) => {
   try {
-    const expected = process.env.LOGS_PASSWORD || 'Mexico071010!';
+    const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
     if (!expected || !tokensMatch(expected, provided)) {
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
@@ -390,7 +392,7 @@ app.post("/run-job", async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`[Server] Listening on http://${HOST}:${PORT}`);
-  console.log(`[Server] Serving static from: ${staticPath}`);
+  logNotify(`[Server] Listening on http://${HOST}:${PORT}`);
+  logNotify(`[Server] Serving static from: ${staticPath}`);
   notify(`⏱️ Backend started`);
 });

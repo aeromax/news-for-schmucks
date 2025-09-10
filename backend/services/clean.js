@@ -1,7 +1,9 @@
 // services/clean.js
 
+import { logNotify } from "../utils/notifier.js";
+
 export function clean(input) {
-    console.log("[Clean] Cleaning up input...");
+    logNotify("[Clean] Cleaning up input...");
     // 🔹 Normalize input to a string
     if (Array.isArray(input)) {
         input = input.join("\n");
