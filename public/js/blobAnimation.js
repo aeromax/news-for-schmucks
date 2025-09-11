@@ -23,7 +23,6 @@
   /* Web Audio setup (disabled on iOS to allow background playback) */
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, analyser, sourceNode, data, rafId;
-  let audioRouted = false; // when true, analyser is connected to destination and element is muted
   let useWebAudio = !!AudioCtx && !isIOS;
 
   function ensureAudioGraph() {
@@ -37,19 +36,10 @@
         data = new Uint8Array(analyser.frequencyBinCount);
       }
       if (!sourceNode && audio) {
-        // Tap the HTMLAudioElement into the analyser; do NOT route to destination
-        // to avoid duplicating audio. The element already plays out-of-graph.
+        // Tap the HTMLAudioElement into the analyser; do NOT route to destination.
+        // The element itself produces sound; analyser is visuals-only.
         sourceNode = ctx.createMediaElementSource(audio);
         sourceNode.connect(analyser);
-        // Route through the audio graph for consistent output (e.g., Safari)
-        try {
-          analyser.connect(ctx.destination);
-          if (audio) audio.muted = true; // avoid double output
-          audioRouted = true;
-        } catch (_) {
-          // If we can't route, leave element audio as-is
-          audioRouted = false;
-        }
       }
     } catch (err) {
       // If WebAudio setup fails (CORS, multiple connections, etc),
@@ -63,7 +53,6 @@
       sourceNode = null;
       analyser = null;
       data = null;
-      audioRouted = false;
     }
   }
 
@@ -113,8 +102,8 @@
     }
     try {
       if (audio) {
-        // Ensure not muted and sane volume
-        if (!audioRouted) audio.muted = false;
+        // Ensure not muted and sane volume (element outputs sound directly)
+        audio.muted = false;
         if (!(audio.volume > 0)) audio.volume = 1;
       }
       await audio.play();
