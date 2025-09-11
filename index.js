@@ -32,8 +32,54 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
 // Serve static assets
 app.use(express.static(staticPath));
 
-// Serve storage assets (audio, transcript)
+// Serve storage assets (audio, transcript) when present via static dir
 app.use("/storage", express.static(storagePath));
+
+// Helper: find an asset across likely locations
+async function resolveAsset(relName) {
+  const candidates = [
+    path.join(storagePath, relName),
+    path.join(__dirname, 'var', 'data', relName),
+    path.join(__dirname, 'var', relName),
+    path.join(staticPath, 'storage', relName),
+  ];
+  for (const p of candidates) {
+    try {
+      const st = await fs.stat(p);
+      if (st && st.isFile()) return p;
+    } catch {}
+  }
+  return '';
+}
+
+// Stream audio and transcript via backend so preview envs without persistent storage still work
+app.get('/api/audio', async (req, res) => {
+  try {
+    const file = await resolveAsset('audio.mp3');
+    if (!file) return res.status(404).json({ ok: false, error: 'audio not found' });
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'no-store');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.sendFile(file);
+  } catch (err) {
+    console.error('[/api/audio] error', err);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.get('/api/transcript', async (req, res) => {
+  try {
+    const file = await resolveAsset('transcript.json');
+    if (!file) return res.status(404).json({ ok: false, error: 'transcript not found' });
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    res.set('Cache-Control', 'no-store');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.sendFile(file);
+  } catch (err) {
+    console.error('[/api/transcript] error', err);
+    res.status(500).json({ ok: false });
+  }
+});
 
 // Root should serve the HTML file
 app.get("/", (req, res) => {

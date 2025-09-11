@@ -16,7 +16,7 @@ const formatBoldCaptions = (text) =>
   text.replace(/\*\*(.+?)\*\*/g, '<span class="bold-caption">$1</span>');
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadCaptionsFromJSON(`/storage/transcript.json?nocache=${Date.now()}`);
+  loadCaptionsFromJSON(`/api/transcript?nocache=${Date.now()}`);
   initLinearProgress();
 });
 
