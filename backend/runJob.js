@@ -6,12 +6,12 @@ import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import 'dotenv/config';
 import { getAudioDurationFromBuffer } from "./services/getDuration.js";
-import { notify, logNotify } from "./utils/notifier.js";
+import { logNotify } from "./utils/notifier.js";
 import { logSummary } from "./services/summaryLogger.js";
 
 export async function runJob() {
-  logNotify(`[RunJob] Starting News for Schmucks job...`);
-  notify(`⏱️Job running`);
+  // Indicate start of a new backend job
+  try { logNotify(`[RunJob] Starting News for Schmucks job...`); } catch {}
 
 
   try {
@@ -19,7 +19,7 @@ export async function runJob() {
     const summary = await summarizeNews(process.env.OPENAI_API_KEY, urls);
     // Append the raw generated summary to persistent JSONL log
     await logSummary(summary, urls, "./");
-    logNotify(summary);
+    // Notification removed
 
     const cleanText = clean(summary);
 
@@ -30,7 +30,7 @@ export async function runJob() {
 
     await saveFiles("./", cleanText, speech);
 
-    logNotify("✅ All done! Files written to storage directory.");
+    // Notification removed
   } catch (err) {
     showErr(err);
     throw err; // bubble up so caller (cron, API endpoint) can handle
@@ -40,6 +40,7 @@ export async function runJob() {
 function showErr(err) {
   if (err?.stack) {
     console.error(err.stack);
+    try { logNotify(`[runJob.js] ${err.stack}`); } catch {}
     return;
   }
 
@@ -48,19 +49,17 @@ function showErr(err) {
     const text = data.toString("utf8");
     try {
       console.error("[HTTP Error JSON]", JSON.parse(text));
-      notify(`💥[Backend job: HTTP Error JSON]\n${text}`);
+      try { logNotify(`[runJob.js] [HTTP Error JSON] ${text}`); } catch {}
     } catch {
-      notify(`💥[Backend job: HTTP Error Text]\n${text}`);
       console.error("💥[Backend job: HTTP Error Text]", text);
+      try { logNotify(`[runJob.js] [HTTP Error Text] ${text}`); } catch {}
     }
   } else {
     console.error("💥[Backend job: Error]", data);
     try {
       const msg = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-      notify(`[💥Backend job: Error]\n${msg}`);
-    } catch {
-      notify(`💥[Backend job: Error]`);
-    }
+      logNotify(`[runJob.js] ${msg}`);
+    } catch {}
   }
 }
 

@@ -517,8 +517,6 @@ function setCaptionPos(px) {
     const wrap = document.querySelector(".progress-wrap");
     if (wrap) wrap.setAttribute("aria-valuenow", String(Math.round(pct * 100)));
 
-    console.log(
-      `[Shortcuts] ${code} -> seek to ${newTime}s (pct ${Math.round(pct * 100)}%)`
-    );
+    // Logging removed
   });
 })();

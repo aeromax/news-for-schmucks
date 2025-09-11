@@ -25,7 +25,7 @@ async function main() {
     await wiki.setLang(String(lang));
   } catch {}
 
-  console.log(`[TestSearch] lang=${lang} limit=${limit} terms=${JSON.stringify(terms)}`);
+  // Logging removed
 
   for (const term of terms) {
     try {
@@ -33,9 +33,9 @@ async function main() {
       if (!t) continue;
       const res = await wiki.search(t, { limit, suggestion: true });
       const list = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
-      console.log(`\n=== ${t} ===`);
+      // Logging removed
       if (!list.length) {
-        console.log('(no results)');
+        // Logging removed
         continue;
       }
       const picked = list.slice(0, limit);
@@ -48,9 +48,7 @@ async function main() {
           if (sum?.extract) extract = String(sum.extract).slice(0, 600);
         } catch {}
         const url = `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
-        console.log(`- ${title}`);
-        console.log(`  ${url}`);
-        if (extract) console.log(`  ${extract}`);
+        // Logging removed
       }
     } catch (err) {
       const data = err?.response?.data || err?.message || err;
@@ -70,4 +68,3 @@ main().catch((err) => {
   console.error('[TestSearch] fatal:', data);
   process.exitCode = 1;
 });
-
