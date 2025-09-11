@@ -11,8 +11,6 @@ import { logSummary } from "./services/summaryLogger.js";
 
 export async function runJob() {
   logNotify(`[RunJob] Starting News for Schmucks job...`);
-  notify(`⏱️Job running`);
-
 
   try {
     const urls = await fetchHeadlines(process.env.NEWS_API_KEY);
@@ -25,7 +23,7 @@ export async function runJob() {
     cleanText.duration = duration;
     await saveFiles("./", cleanText, speech);
 
-    logNotify("✅ All done! Files written to storage directory.");
+    logNotify("All done! Files written to storage directory.");
   } catch (err) {
     showErr(err);
     throw err; // bubble up so caller (cron, API endpoint) can handle
