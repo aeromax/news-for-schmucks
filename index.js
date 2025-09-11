@@ -2,7 +2,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { notify, logNotify } from "./backend/utils/notifier.js";
+import { logNotify, notify } from "./backend/utils/notifier.js";
 import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 import { timingSafeEqual } from 'crypto';
@@ -73,7 +73,8 @@ app.get('/storage/:name', async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.sendFile(file);
   } catch (err) {
-    console.error('[/api/storage] error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/storage] ${msg}`);
     res.status(500).json({ ok: false });
   }
 });
@@ -124,10 +125,11 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
     // msg += ` | ua:${ua} | tz:${tz} | lang:${lang}`;
     msg += ` | ua:${ua}`;
 
-    await notify(msg);
+    // Notification removed
     res.status(204).end();
   } catch (err) {
-    console.error('error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/notify-view] ${msg}`);
     res.status(500).json({ ok: false });
   }
 });
@@ -169,6 +171,9 @@ app.get('/api/logs', async (req, res) => {
     const provided = extractLogsPassword(req);
 
     if (!expected || !tokensMatch(expected, provided)) {
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+      const ua = req.get('user-agent') || 'unknown';
+      try { await notify(`[index.js:/api/logs] Unauthorized access from ${ip} | ua:${ua}`); } catch {}
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -205,7 +210,8 @@ app.get('/api/logs', async (req, res) => {
 
     res.json({ ok: true, date, count: entries.length, entries });
   } catch (err) {
-    console.error('[/logs] error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/logs] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
@@ -217,6 +223,9 @@ app.get('/api/logs/dates', async (req, res) => {
     const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
     if (!expected || !tokensMatch(expected, provided)) {
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+      const ua = req.get('user-agent') || 'unknown';
+      try { await notify(`[index.js:/api/logs/dates] Unauthorized access from ${ip} | ua:${ua}`); } catch {}
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -236,7 +245,8 @@ app.get('/api/logs/dates', async (req, res) => {
 
     res.json({ ok: true, dates });
   } catch (err) {
-    console.error('[/logs/dates] error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/logs/dates] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
@@ -437,7 +447,8 @@ app.get('/logs', async (req, res) => {
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
-    console.error('[/logs] error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/logs] ${msg}`);
     res.status(500).set('Content-Type', 'text/html; charset=utf-8').send('<!doctype html><html><body><h1>Error</h1><pre>' + (err?.message || 'Unknown error') + '</pre></body></html>');
   }
 });
@@ -450,22 +461,21 @@ app.post("/run-job", async (req, res) => {
 
     if (!expected || !tokensMatch(expected, provided)) {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+      const ua = req.get('user-agent') || 'unknown';
       console.warn(`[/run-job] Unauthorized attempt from ${ip}`);
+      try { await notify(`[index.js:/run-job] Unauthorized attempt from ${ip} | ua:${ua}`); } catch {}
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
     await runJob();
     res.status(200).json({ ok: true, message: "Job executed." });
-    notify(`⏱️ Job executed`);
   } catch (err) {
-    console.error("[/run-job] Failed:", err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/run-job] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
-    notify(`💥Job failed ${err}`);
   }
 });
 
 app.listen(PORT, HOST, () => {
-  logNotify(`[Server] Listening on http://${HOST}:${PORT}`);
-  logNotify(`[Server] Serving static from: ${staticPath}`);
-  notify(`⏱️ Backend started`);
+  // Notifications removed
 });

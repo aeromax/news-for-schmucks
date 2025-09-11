@@ -1,13 +1,12 @@
 // runTextOnly.js
-import { fetchHeadlines } from "./services/fetchHeadlines.js";
-import { summarizeNews } from "./services/summarizeNews.js";
-import { clean } from "./services/clean.js";
+import { fetchHeadlines } from "../services/fetchHeadlines.js";
+import { summarizeNews } from "../services/summarizeNews.js";
+import { clean } from "../services/clean.js";
 import 'dotenv/config';
-import { logSummary } from "./services/summaryLogger.js";
-import { logNotify } from "./utils/notifier.js";
+import { logSummary } from "../services/summaryLogger.js";
 
 export async function runTextOnlyJob() {
-  logNotify(`[RunTextOnly] Starting text-only generation...`);
+  // Notification removed
   try {
     const urls = await fetchHeadlines(process.env.NEWS_API_KEY);
     const summary = await summarizeNews(process.env.OPENAI_API_KEY, urls);
@@ -15,10 +14,7 @@ export async function runTextOnlyJob() {
     await logSummary(summary, urls, "./");
     const cleanText = clean(summary);
 
-    // Output the transcript JSON to stdout for tests and inspection
-    // Matches the shape consumed by the frontend without writing files
-    logNotify(JSON.stringify({ captions: cleanText }, null, 2));
-    logNotify("✅ Text-only generation complete (no audio, no save).");
+    // Notification removed
   } catch (err) {
     // Keep error logging simple and local to avoid webhooks or file writes
     if (err?.stack) console.error(err.stack);
