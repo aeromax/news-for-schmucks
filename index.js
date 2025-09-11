@@ -33,8 +33,7 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
 app.use(express.static(staticPath));
 
 // Serve storage assets (audio, transcript) when present via static dir
-// Priority: project-local var/data -> system /var/data -> configured storagePath
-app.use("/storage", express.static(path.join(__dirname, 'var', 'data')));
+// Prefer /var/data if it exists, then fall back to configured storagePath
 app.use("/storage", express.static('/var/data'));
 app.use("/storage", express.static(storagePath));
 
