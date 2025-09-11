@@ -14,8 +14,7 @@ export async function logSummary(summary, urls, baseDir = "./") {
 
     const logsDir = path.join(storageDir, "summaries");
 
-    // Ensure directory exists
-    await fs.mkdir(logsDir, { recursive: true });
+
 
     const now = new Date();
     const yyyy = now.getFullYear();

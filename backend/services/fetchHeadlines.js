@@ -7,7 +7,7 @@ export async function fetchHeadlines(apiKey) {
     logNotify("[Fetch] Getting top headlines...");
 
     const res = await axios.get(
-        `https://newsapi.org/v2/top-headlines?source=bbc_news&country=us&pageSize=15&apiKey=${apiKey}`
+        `https://newsapi.org/v2/top-headlines?source=bbc_news&country=us&apiKey=${apiKey}`
     );
     const articles = res.data.articles.filter(a => a.content);
 
@@ -21,6 +21,7 @@ export async function fetchHeadlines(apiKey) {
 
     // Map to unique URLs and join as CSV
     const urls = Array.from(new Set(picked.map(a => a.url))).join(",");
+    console.log(urls);
     return urls;
 }
 

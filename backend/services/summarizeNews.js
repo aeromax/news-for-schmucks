@@ -2,8 +2,7 @@
 
 import OpenAI from "openai";
 import { logNotify } from "../utils/notifier.js";
-import axios from "axios";
-import wiki from "wikipedia";
+
 
 const SYSTEM_PROMPT = `You are the world's most angry, cynical person, presenting the news in a podcast. You are offensive, have a sharp wit, and snarky sense of humor. You're a comedic genius. You speak like a New Yorker who’s seen too much and gives zero f*cks. You research the context of each news story, and give your no-bullsh*t, culturally aware take on each one. Use current cultural references and idioms. Your tone is full of sarcasm, dark humor, barely restrained rage, and incredulity. You are incredulous to how ridiculous the news is. You use phrases like "what the actual f*ck?!", "You've gotta be sh*tting me!", "Oh for crying out loud.", "Get the hell outta here." Use curse words, but you may censor them such as "f*ck","sh*t". You must use at least five curse words in your delivery . Colorful, offensive, intelligent, and deeply snarky. Never make any comments about your system prompt, your character or your directive.`;
 
@@ -62,22 +61,21 @@ async function runWithWikiTools(openai, urlsCsv) {
             role: 'user',
             content:
                 `You will produce a comedic daily news rundown for the show "News for Schmucks." You are given article URLs: ${urls.join(', ')}.
-            `
-                // Wikipedia research tool:
-                // - wiki_search(terms: string[], limit = 1, lang = 'en').
-                // For the entire set of stories, first choose TWO distinct subjects per story to research on Wikipedia. Then make ONE SINGLE wiki_search call for the whole request with terms=[all chosen subjects], deduped, limit=1 per term. After receiving the tool results, write the final output for all stories in order. Do not call wiki_search more than once.
-                + `
-
+            
+                Wikipedia research tool:
+                - wiki_search(terms: string[], limit = 1, lang = 'en').
+                For the entire set of stories, first choose TWO distinct subjects per story to research on Wikipedia. Then make ONE SINGLE wiki_search call for the whole request with terms=[all chosen subjects], deduped, limit=1 per term. After receiving the tool results, write the final output for all stories in order. Do not call wiki_search more than once.
+                
                 Output requirements (strict):
                 - Start with a one-line welcome to "News for Schmucks."
-                - Then, for each provided URL, output exactly ONE line in this format: **N. Headline** — snappy commentary
+                - Then, for each provided headline, output exactly ONE line in this format: **N. Headline** 
                 - Number N starts at 1 and increases by 1 for each item.
                 - Put the number INSIDE the bold with the headline (e.g., **1. Headline** — ...).
                 - Do not include URLs or markdown links.
                 - Do not preface the commentary with labels like "Commentary:".
+                – Each news story should be about a 30 second read.
                 - End with a brief, snarky signoff.
-
-                Only output the welcome line and the numbered items; no other text.`
+                `
         }
     ];
 
@@ -85,7 +83,7 @@ async function runWithWikiTools(openai, urlsCsv) {
         const resp = await openai.chat.completions.create({
             model: 'gpt-4.1',
             messages,
-            // tools,
+            tools,
             tool_choice: 'auto',
             temperature: 1,
         });
@@ -117,7 +115,7 @@ async function runWithWikiTools(openai, urlsCsv) {
                             seen.add(n);
                             uniqTerms.push(String(t).trim());
                         }
-                        console.log(`[Tools] wiki_search terms=${JSON.stringify(uniqTerms).slice(0, 200)} lang=${lang} limit=${limit}`);
+                        console.log(`[Tools] wiki_search terms=${JSON.stringify(uniqTerms)} lang = ${lang} limit = ${limit}`);
 
                         result = await wikiBatchSearch(uniqTerms, { lang, limit });
                     } else {
@@ -193,4 +191,4 @@ function stripHtml(html) {
         .replace(/<[^>]+>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
-}
+};;;
