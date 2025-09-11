@@ -20,10 +20,12 @@
     return isAppleMobile || isTouchMac;
   })();
 
-  /* Web Audio setup (disabled on iOS to allow background playback) */
+  /* Web Audio setup (disabled on iOS & Safari for reliable audio output) */
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, analyser, sourceNode, data, rafId;
-  let useWebAudio = !!AudioCtx && !isIOS;
+  const ua = navigator.userAgent || '';
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  let useWebAudio = !!AudioCtx && !isIOS && !isSafari;
 
   function ensureAudioGraph() {
     if (!useWebAudio) return;
