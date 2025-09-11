@@ -54,31 +54,26 @@ async function resolveAsset(relName) {
   return '';
 }
 
-// Stream audio and transcript via backend so preview envs without persistent storage still work
-app.get('/api/audio', async (req, res) => {
-  try {
-    const file = await resolveAsset('audio.mp3');
-    if (!file) return res.status(404).json({ ok: false, error: 'audio not found' });
-    res.set('Content-Type', 'audio/mpeg');
-    res.set('Cache-Control', 'no-store');
-    res.set('Access-Control-Allow-Origin', '*');
-    res.sendFile(file);
-  } catch (err) {
-    console.error('[/api/audio] error', err);
-    res.status(500).json({ ok: false });
-  }
-});
+// Unified storage endpoint to serve whitelisted files
+const STORAGE_MIME = new Map([
+  ['audio.mp3', 'audio/mpeg'],
+  ['transcript.json', 'application/json; charset=utf-8'],
+]);
 
-app.get('/api/transcript', async (req, res) => {
+app.get('/api/storage/:name', async (req, res) => {
   try {
-    const file = await resolveAsset('transcript.json');
-    if (!file) return res.status(404).json({ ok: false, error: 'transcript not found' });
-    res.set('Content-Type', 'application/json; charset=utf-8');
+    const name = String(req.params.name || '').toLowerCase();
+    if (!STORAGE_MIME.has(name)) {
+      return res.status(404).json({ ok: false, error: 'not found' });
+    }
+    const file = await resolveAsset(name);
+    if (!file) return res.status(404).json({ ok: false, error: 'not found' });
+    res.set('Content-Type', STORAGE_MIME.get(name));
     res.set('Cache-Control', 'no-store');
     res.set('Access-Control-Allow-Origin', '*');
     res.sendFile(file);
   } catch (err) {
-    console.error('[/api/transcript] error', err);
+    console.error('[/api/storage] error', err);
     res.status(500).json({ ok: false });
   }
 });
