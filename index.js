@@ -32,8 +32,51 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
 // Serve static assets
 app.use(express.static(staticPath));
 
-// Serve storage assets (audio, transcript)
+// Serve storage assets (audio, transcript) when present via static dir
+// Prefer /var/data if it exists, then fall back to configured storagePath
+app.use("/storage", express.static('/var/data'));
 app.use("/storage", express.static(storagePath));
+
+// Helper: find an asset across likely locations
+async function resolveAsset(relName) {
+  const candidates = [
+    path.join(storagePath, relName),
+    path.join(__dirname, 'var', 'data', relName),
+    path.join(__dirname, 'var', relName),
+    path.join(staticPath, 'storage', relName),
+  ];
+  for (const p of candidates) {
+    try {
+      const st = await fs.stat(p);
+      if (st && st.isFile()) return p;
+    } catch { }
+  }
+  return '';
+}
+
+// Unified storage endpoint to serve whitelisted files
+const STORAGE_MIME = new Map([
+  ['audio.mp3', 'audio/mpeg'],
+  ['transcript.json', 'application/json; charset=utf-8'],
+]);
+
+app.get('/storage/:name', async (req, res) => {
+  try {
+    const name = String(req.params.name || '').toLowerCase();
+    if (!STORAGE_MIME.has(name)) {
+      return res.status(404).json({ ok: false, error: 'not found' });
+    }
+    const file = await resolveAsset(name);
+    if (!file) return res.status(404).json({ ok: false, error: 'not found' });
+    res.set('Content-Type', STORAGE_MIME.get(name));
+    res.set('Cache-Control', 'no-store');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.sendFile(file);
+  } catch (err) {
+    console.error('[/api/storage] error', err);
+    res.status(500).json({ ok: false });
+  }
+});
 
 // Root should serve the HTML file
 app.get("/", (req, res) => {
