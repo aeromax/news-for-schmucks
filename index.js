@@ -49,7 +49,7 @@ async function resolveAsset(relName) {
     try {
       const st = await fs.stat(p);
       if (st && st.isFile()) return p;
-    } catch {}
+    } catch { }
   }
   return '';
 }
@@ -60,7 +60,7 @@ const STORAGE_MIME = new Map([
   ['transcript.json', 'application/json; charset=utf-8'],
 ]);
 
-app.get('/api/storage/:name', async (req, res) => {
+app.get('/storage/:name', async (req, res) => {
   try {
     const name = String(req.params.name || '').toLowerCase();
     if (!STORAGE_MIME.has(name)) {
