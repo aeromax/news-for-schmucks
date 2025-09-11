@@ -20,12 +20,11 @@
     return isAppleMobile || isTouchMac;
   })();
 
-  /* Web Audio setup (disabled on iOS & Safari for reliable audio output) */
+  /* Web Audio setup (disabled globally for reliable audio output; enable via ?webaudio=1) */
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, analyser, sourceNode, data, rafId;
-  const ua = navigator.userAgent || '';
-  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-  let useWebAudio = !!AudioCtx && !isIOS && !isSafari;
+  const params = new URLSearchParams(location.search);
+  let useWebAudio = params.get('webaudio') === '1' && !!AudioCtx && !isIOS;
 
   function ensureAudioGraph() {
     if (!useWebAudio) return;
