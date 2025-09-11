@@ -17,17 +17,12 @@ export async function runJob() {
   try {
     const urls = await fetchHeadlines(process.env.NEWS_API_KEY);
     const summary = await summarizeNews(process.env.OPENAI_API_KEY, urls);
-    // Append the raw generated summary to persistent JSONL log
+    // Append the raw generated summary to persistent JSON log
     await logSummary(summary, urls, "./");
-    logNotify(summary);
-
     const cleanText = clean(summary);
-
     const speech = await generateSpeech(process.env.OPENAI_API_KEY, cleanText);
-
     const duration = await getAudioDurationFromBuffer(speech);
     cleanText.duration = duration;
-
     await saveFiles("./", cleanText, speech);
 
     logNotify("✅ All done! Files written to storage directory.");
