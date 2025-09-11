@@ -23,22 +23,47 @@
   /* Web Audio setup (disabled on iOS to allow background playback) */
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, analyser, sourceNode, data, rafId;
-  const useWebAudio = !!AudioCtx && !isIOS;
+  let audioRouted = false; // when true, analyser is connected to destination and element is muted
+  let useWebAudio = !!AudioCtx && !isIOS;
 
   function ensureAudioGraph() {
     if (!useWebAudio) return;
-    if (!ctx) ctx = new AudioCtx();
-    if (!analyser) {
-      analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.4;
-      data = new Uint8Array(analyser.frequencyBinCount);
-    }
-    if (!sourceNode && audio) {
-      // Tap the HTMLAudioElement into the analyser; do NOT route to destination
-      // to avoid duplicating audio. The element already plays out-of-graph.
-      sourceNode = ctx.createMediaElementSource(audio);
-      sourceNode.connect(analyser);
+    try {
+      if (!ctx) ctx = new AudioCtx();
+      if (!analyser) {
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.4;
+        data = new Uint8Array(analyser.frequencyBinCount);
+      }
+      if (!sourceNode && audio) {
+        // Tap the HTMLAudioElement into the analyser; do NOT route to destination
+        // to avoid duplicating audio. The element already plays out-of-graph.
+        sourceNode = ctx.createMediaElementSource(audio);
+        sourceNode.connect(analyser);
+        // Route through the audio graph for consistent output (e.g., Safari)
+        try {
+          analyser.connect(ctx.destination);
+          if (audio) audio.muted = true; // avoid double output
+          audioRouted = true;
+        } catch (_) {
+          // If we can't route, leave element audio as-is
+          audioRouted = false;
+        }
+      }
+    } catch (err) {
+      // If WebAudio setup fails (CORS, multiple connections, etc),
+      // gracefully disable analyzer and fall back to time-based animation.
+      console.warn('[Audio] Disabling WebAudio analyzer:', err?.message || err);
+      useWebAudio = false;
+      try {
+        if (sourceNode) { try { sourceNode.disconnect(); } catch(_){} }
+        if (analyser) { try { analyser.disconnect(); } catch(_){} }
+      } catch (_) {}
+      sourceNode = null;
+      analyser = null;
+      data = null;
+      audioRouted = false;
     }
   }
 
@@ -86,8 +111,18 @@
     if (useWebAudio && ctx && ctx.state !== 'running') {
       try { await ctx.resume(); } catch {}
     }
-    await audio.play();
-    playIcon.classList.replace('play', 'pause');
+    try {
+      if (audio) {
+        // Ensure not muted and sane volume
+        if (!audioRouted) audio.muted = false;
+        if (!(audio.volume > 0)) audio.volume = 1;
+      }
+      await audio.play();
+    } catch (err) {
+      console.warn('[Audio] play() failed:', err?.message || err);
+      // Even if play failed, keep UI consistent; the user can try again
+    }
+    if (playIcon) playIcon.classList.replace('play', 'pause');
     animateBlobs();
   }
 
