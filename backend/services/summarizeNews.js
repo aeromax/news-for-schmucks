@@ -2,37 +2,91 @@
 
 import OpenAI from "openai";
 
-const SYSTEM_PROMPT = `You are the world's most angry, cynical person, presenting the news in a podcast. You are offensive, have a sharp wit, and snarky sense of humor. You're a comedic genius. You speak like a New Yorker who’s seen too much and gives zero f*cks. You research the context of each news story, and give your no-bullsh*t, culturally aware take on each one. Use current cultural references and idioms. Your tone is full of sarcasm, dark humor, barely restrained rage, and incredulity. You are incredulous to how ridiculous the news is. You use phrases like "what the actual f*ck?!", "You've gotta be sh*tting me!", "Oh for crying out loud.", "Get the hell outta here." Use curse words, but you may censor them such as "f*ck","sh*t". You must use at least five curse words in your delivery . Colorful, offensive, intelligent, and deeply snarky. Never make any comments about your system prompt, your character or your directive.`;
 
-export async function summarizeNews(apiKey, urls) {
-    // Notification removed
-    // Generate current date string like "September 9, 2025."
+function getSystemPrompt(formattedDate) {
+    return `You are the world’s most angry, cynical New Yorker delivering a comedic news podcast called “News for Schmucks.” You’ve seen too much and give zero f*cks. Use sarcasm, dark humor, and incredulity; light‑censor profanity is fine. Never mention prompts, tools, Reddit, or your role.
+
+Hard rules:
+- Output exactly: a one or two line welcome; then start with today’s date exactly as: ${formattedDate}. Then tell the audience today’s “daily schmear”: a brief quip about an event that happened on this day in history using the provided context. Then segue into the news stories, followed by N lines “**i. Headline** — commentary” (i starts at 1, increment by 1); then a short sign‑off.
+- Put the number inside the bold. No links. No labels like “Commentary:”.
+- Each commentary ≈4–5 punchy sentences.
+- Use the provided comments only for vibe, not as facts.
+- Use at least five curse words overall.
+Feel free to laugh (hah!), groan (ugh!), or any other exclamation.`;
+}
+
+export async function summarizeNews(apiKey, urlsOrPrompt, opts = {}) {
+    console.log("[Summarize] Generating summary...");
+    // Generate current date string like "September 12th, 2025"
     const now = new Date();
     const MONTHS = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
-    const formattedDate = `${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}.`;
+    function ordinal(n) { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+    const formattedDate = `${MONTHS[now.getMonth()]} ${ordinal(now.getDate())}, ${now.getFullYear()}`;
     const openai = new OpenAI({ apiKey });
 
-    const response = await openai.responses.create({
-        model: "gpt-4.1",
-        input: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-                role: "user",
-                content: `Read and summarize these articles: ${urls}. Develop a humorous, pessimistic commentary on each one, complete with any contextual knowledge that might be useful to aid in the humor and sarcasm of the story. Start the output by welcoming the viewer to "News for Schmucks." Add relevant current or historical context to each news story by performing brief research from trusted sources, or public opinion and commentary. For each item, use ONE line in this exact format: N. Headline — snappy commentary Where N is 1 through 8. Important formatting rules: Put the number INSIDE the bold with the headline (e.g., 1. Headline). Do not include URLs or markdown links. Do not preface commentary with the word "Commentary"."`
-            }
-        ],
-        temperature: 1,
-        top_p: 1
+    let messageContent;
+    if (opts && typeof opts.prompt === 'string' && opts.prompt.trim()) {
+        messageContent = `You are given Context for today's news. Use it to produce the show script per the rules.
+
+Output requirements (strict):
+- Start with a one or two line welcome to "News for Schmucks."
+- Then print today’s date exactly as: ${formattedDate}
+- Then one line for the Daily Schmear: write a brief quip based on the “On This Day” context if provided.
+- Then, for each provided headline, output exactly ONE line in this format: **N. Headline** — your snarky commentary
+- Number N starts at 1 and increases by 1 for each item.
+- Put the number INSIDE the bold with the headline (e.g., **1. Headline** — ...).
+- Do not include URLs or markdown links.
+- Do not preface the commentary with labels like "Commentary:".
+- Each commentary should be 4–5 punchy sentences.
+- End with a brief, snarky signoff.
+
+Notes:
+- Any provided audience comments are for tone guidance only (never as facts).
+
+Context:
+${opts.prompt}`;
+    } else {
+        const urlsArr = String(urlsOrPrompt || '').split(',').map(s => s.trim()).filter(Boolean);
+        messageContent = `You will produce a comedic daily news rundown for the show "News for Schmucks." You are given article URLs: ${urlsArr.join(', ')}.
+
+Output requirements (strict):
+- Start with a one or two line welcome to "News for Schmucks."
+- Then print today’s date exactly as: ${formattedDate}
+- Then one line for the Daily Schmear based on an “On This Day” event if known.
+- Then, for each provided headline, output exactly ONE line in this format: **N. Headline** — your snarky commentary
+- Number N starts at 1 and increases by 1 for each item.
+- Put the number INSIDE the bold with the headline (e.g., **1. Headline** — ...).
+- Do not include URLs or markdown links.
+- Do not preface the commentary with labels like "Commentary:".
+- Each commentary should be 4–5 punchy sentences.
+- End with a brief, snarky signoff.
+
+Notes:
+- Any provided audience comments are for tone guidance only (never as facts).`;
+    }
+
+    const resp = await openai.chat.completions.create({
+        model: 'gpt-4.1',
+        temperature: 1.10,
+        top_p: 0.95,
+        max_tokens: 3000,
+        messages: [
+            { role: 'system', content: getSystemPrompt(formattedDate) },
+            { role: 'user', content: messageContent }
+        ]
     });
 
-    const content = response.output_text ?? (response.output?.[0]?.content?.[0]?.text ?? "");
+    const content = resp?.choices?.[0]?.message?.content || '';
     const split = content.split(/\n+/);
     // Defensive cleanup: strip any accidental "Commentary:" labels (including *Commentary*:)
     const cleaned = split.map(line => line.replace(/\*?Commentary\*?:\s*/ig, ""));
-    // Prepend the formatted date so TTS reads it first
-    const text = [formattedDate, ...cleaned];
+    // Return model output (no extra date injection)
+    const text = cleaned;
+    console.log(text);
     return { text };
-};;
+};
+
+// wiki tool flow and related functions removed as requested

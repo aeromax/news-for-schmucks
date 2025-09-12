@@ -477,5 +477,6 @@ app.post("/run-job", async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-  // Notifications removed
+  console.log(`[Server] Listening on http://${HOST}:${PORT}`);
+  console.log(`[Server] Serving static from: ${staticPath}`);
 });
