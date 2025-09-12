@@ -34,9 +34,11 @@ export async function logSummary(summary, urls, baseDir = "./") {
 
     const line = JSON.stringify(record) + "\n";
     await fs.appendFile(filePath, line, { encoding: 'utf8' });
-    logNotify(`📝➡[Log] Appended summary to ${filePath}`);
+    // Notification removed
   } catch (err) {
     // Do not fail the job if logging fails; just report
-    console.error("[Log] Failed to append summary log:", err?.stack || err);
+    const msg = err?.stack || err?.message || String(err);
+    console.error("[Log] Failed to append summary log:", msg);
+    try { logNotify(`[summaryLogger.js] ${msg}`); } catch {}
   }
 }

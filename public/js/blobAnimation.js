@@ -20,25 +20,40 @@
     return isAppleMobile || isTouchMac;
   })();
 
-  /* Web Audio setup (disabled on iOS to allow background playback) */
+  /* Web Audio setup (disabled globally for reliable audio output; enable via ?webaudio=1) */
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, analyser, sourceNode, data, rafId;
-  const useWebAudio = !!AudioCtx && !isIOS;
+  const params = new URLSearchParams(location.search);
+  let useWebAudio = params.get('webaudio') === '1' && !!AudioCtx && !isIOS;
 
   function ensureAudioGraph() {
     if (!useWebAudio) return;
-    if (!ctx) ctx = new AudioCtx();
-    if (!analyser) {
-      analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.4;
-      data = new Uint8Array(analyser.frequencyBinCount);
-    }
-    if (!sourceNode && audio) {
-      // Tap the HTMLAudioElement into the analyser; do NOT route to destination
-      // to avoid duplicating audio. The element already plays out-of-graph.
-      sourceNode = ctx.createMediaElementSource(audio);
-      sourceNode.connect(analyser);
+    try {
+      if (!ctx) ctx = new AudioCtx();
+      if (!analyser) {
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.4;
+        data = new Uint8Array(analyser.frequencyBinCount);
+      }
+      if (!sourceNode && audio) {
+        // Tap the HTMLAudioElement into the analyser; do NOT route to destination.
+        // The element itself produces sound; analyser is visuals-only.
+        sourceNode = ctx.createMediaElementSource(audio);
+        sourceNode.connect(analyser);
+      }
+    } catch (err) {
+      // If WebAudio setup fails (CORS, multiple connections, etc),
+      // gracefully disable analyzer and fall back to time-based animation.
+      console.warn('[Audio] Disabling WebAudio analyzer:', err?.message || err);
+      useWebAudio = false;
+      try {
+        if (sourceNode) { try { sourceNode.disconnect(); } catch(_){} }
+        if (analyser) { try { analyser.disconnect(); } catch(_){} }
+      } catch (_) {}
+      sourceNode = null;
+      analyser = null;
+      data = null;
     }
   }
 
@@ -86,8 +101,18 @@
     if (useWebAudio && ctx && ctx.state !== 'running') {
       try { await ctx.resume(); } catch {}
     }
-    await audio.play();
-    playIcon.classList.replace('play', 'pause');
+    try {
+      if (audio) {
+        // Ensure not muted and sane volume (element outputs sound directly)
+        audio.muted = false;
+        if (!(audio.volume > 0)) audio.volume = 1;
+      }
+      await audio.play();
+    } catch (err) {
+      console.warn('[Audio] play() failed:', err?.message || err);
+      // Even if play failed, keep UI consistent; the user can try again
+    }
+    if (playIcon) playIcon.classList.replace('play', 'pause');
     animateBlobs();
   }
 

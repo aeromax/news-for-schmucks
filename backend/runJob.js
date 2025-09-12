@@ -8,7 +8,7 @@ import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
 import 'dotenv/config';
 import { getAudioDurationFromBuffer } from "./services/getDuration.js";
-import { notify, logNotify } from "./utils/notifier.js";
+import { logNotify } from "./utils/notifier.js";
 import { logSummary } from "./services/summaryLogger.js";
 
 export async function runJob() {
@@ -38,6 +38,7 @@ export async function runJob() {
 function showErr(err) {
   if (err?.stack) {
     console.error(err.stack);
+    try { logNotify(`[runJob.js] ${err.stack}`); } catch {}
     return;
   }
 
@@ -46,19 +47,17 @@ function showErr(err) {
     const text = data.toString("utf8");
     try {
       console.error("[HTTP Error JSON]", JSON.parse(text));
-      notify(`💥[Backend job: HTTP Error JSON]\n${text}`);
+      try { logNotify(`[runJob.js] [HTTP Error JSON] ${text}`); } catch {}
     } catch {
-      notify(`💥[Backend job: HTTP Error Text]\n${text}`);
       console.error("💥[Backend job: HTTP Error Text]", text);
+      try { logNotify(`[runJob.js] [HTTP Error Text] ${text}`); } catch {}
     }
   } else {
     console.error("💥[Backend job: Error]", data);
     try {
       const msg = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-      notify(`[💥Backend job: Error]\n${msg}`);
-    } catch {
-      notify(`💥[Backend job: Error]`);
-    }
+      logNotify(`[runJob.js] ${msg}`);
+    } catch {}
   }
 }
 

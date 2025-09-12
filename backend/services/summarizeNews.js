@@ -1,7 +1,6 @@
 // services/summarizeNews.js
 
 import OpenAI from "openai";
-import { logNotify } from "../utils/notifier.js";
 
 
 function getSystemPrompt(formattedDate) {
