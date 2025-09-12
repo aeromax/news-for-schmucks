@@ -8,10 +8,10 @@
     "run": "node ./backend/runJob.js",
     "test:text": "node ./backend/runTextOnly.js",
     "dev": "PORT=8080 node index.js",
-    "test:reddit:tone": "node ./backend/scripts/testRedditTone.js",
-    "test:reddit:bundles": "node ./backend/scripts/testRedditBundles.js",
-    "test:reddit:news": "node ./backend/scripts/testRedditNews.js",
-    "test:articles:extract": "node ./backend/scripts/testExtractArticles.js"
+    "test:reddit:tone": "node ./backend/tests/testRedditTone.js",
+    "test:reddit:bundles": "node ./backend/tests/testRedditBundles.js",
+    "test:reddit:news": "node ./backend/tests/testRedditNews.js",
+    "test:articles:extract": "node ./backend/tests/testExtractArticles.js"
   },
   "dependencies": {
     "axios": "^1.6.7",

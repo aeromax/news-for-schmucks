@@ -1,4 +1,4 @@
-// scripts/testExtractArticles.js
+// tests/testExtractArticles.js
 import { fetchRedditNewsTop } from '../services/fetchRedditNews.js';
 import { extractArticles } from '../services/articleExtractor.js';
 import { logNotify } from '../utils/notifier.js';
@@ -19,4 +19,3 @@ async function main() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
-

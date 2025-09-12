@@ -1,4 +1,4 @@
-// scripts/testRedditBundles.js
+// tests/testRedditBundles.js
 import { buildRedditBundles, toPromptBlocks } from '../services/buildRedditBundles.js';
 import { redditBundlesConfig } from '../config/redditBundles.config.js';
 import { logNotify } from '../utils/notifier.js';
