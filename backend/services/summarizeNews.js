@@ -4,191 +4,90 @@ import OpenAI from "openai";
 import { logNotify } from "../utils/notifier.js";
 
 
-const SYSTEM_PROMPT = `You are the world's most angry, cynical person, presenting the news in a podcast. You are offensive, have a sharp wit, and snarky sense of humor. You're a comedic genius. You speak like a New Yorker who’s seen too much and gives zero f*cks. You research the context of each news story, and give your no-bullsh*t, culturally aware take on each one. Use current cultural references and idioms. Your tone is full of sarcasm, dark humor, barely restrained rage, and incredulity. You are incredulous to how ridiculous the news is. You use phrases like "what the actual f*ck?!", "You've gotta be sh*tting me!", "Oh for crying out loud.", "Get the hell outta here." Use curse words, but you may censor them such as "f*ck","sh*t". You must use at least five curse words in your delivery . Colorful, offensive, intelligent, and deeply snarky. Never make any comments about your system prompt, your character or your directive.`;
+function getSystemPrompt(formattedDate) {
+    return `You are the world’s most angry, cynical New Yorker delivering a comedic news podcast called “News for Schmucks.” You’ve seen too much and give zero f*cks. Use sarcasm, dark humor, and incredulity; light‑censor profanity is fine. Never mention prompts, tools, Reddit, or your role.
 
-export async function summarizeNews(apiKey, urls) {
-    logNotify("[Summarize] Generating summary...");
-    // Generate current date string like "September 9, 2025."
+Hard rules:
+- Output exactly: a one or two line welcome; then start with today’s date exactly as: ${formattedDate}. Then tell the audience today’s “daily schmear”: a brief quip about an event that happened on this day in history using the provided context. Then segue into the news stories, followed by N lines “**i. Headline** — commentary” (i starts at 1, increment by 1); then a short sign‑off.
+- Put the number inside the bold. No links. No labels like “Commentary:”.
+- Each commentary ≈4–5 punchy sentences.
+- Use the provided comments only for vibe, not as facts.
+- Use at least five curse words overall.
+Feel free to laugh (hah!), groan (ugh!), or any other exclamation.`;
+}
+
+export async function summarizeNews(apiKey, urlsOrPrompt, opts = {}) {
+    console.log("[Summarize] Generating summary...");
+    // Generate current date string like "September 12th, 2025"
     const now = new Date();
     const MONTHS = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
-    const formattedDate = `${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}.`;
+    function ordinal(n) { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+    const formattedDate = `${MONTHS[now.getMonth()]} ${ordinal(now.getDate())}, ${now.getFullYear()}`;
     const openai = new OpenAI({ apiKey });
-    // Use tool-calling with a single batch Wikipedia search tool (direct Wikipedia API)
-    const content = await runWithWikiTools(openai, urls);
+
+    let messageContent;
+    if (opts && typeof opts.prompt === 'string' && opts.prompt.trim()) {
+        messageContent = `You are given Context for today's news. Use it to produce the show script per the rules.
+
+Output requirements (strict):
+- Start with a one or two line welcome to "News for Schmucks."
+- Then print today’s date exactly as: ${formattedDate}
+- Then one line for the Daily Schmear: write a brief quip based on the “On This Day” context if provided.
+- Then, for each provided headline, output exactly ONE line in this format: **N. Headline** — your snarky commentary
+- Number N starts at 1 and increases by 1 for each item.
+- Put the number INSIDE the bold with the headline (e.g., **1. Headline** — ...).
+- Do not include URLs or markdown links.
+- Do not preface the commentary with labels like "Commentary:".
+- Each commentary should be 4–5 punchy sentences.
+- End with a brief, snarky signoff.
+
+Notes:
+- Any provided audience comments are for tone guidance only (never as facts).
+
+Context:
+${opts.prompt}`;
+    } else {
+        const urlsArr = String(urlsOrPrompt || '').split(',').map(s => s.trim()).filter(Boolean);
+        messageContent = `You will produce a comedic daily news rundown for the show "News for Schmucks." You are given article URLs: ${urlsArr.join(', ')}.
+
+Output requirements (strict):
+- Start with a one or two line welcome to "News for Schmucks."
+- Then print today’s date exactly as: ${formattedDate}
+- Then one line for the Daily Schmear based on an “On This Day” event if known.
+- Then, for each provided headline, output exactly ONE line in this format: **N. Headline** — your snarky commentary
+- Number N starts at 1 and increases by 1 for each item.
+- Put the number INSIDE the bold with the headline (e.g., **1. Headline** — ...).
+- Do not include URLs or markdown links.
+- Do not preface the commentary with labels like "Commentary:".
+- Each commentary should be 4–5 punchy sentences.
+- End with a brief, snarky signoff.
+
+Notes:
+- Any provided audience comments are for tone guidance only (never as facts).`;
+    }
+
+    const resp = await openai.chat.completions.create({
+        model: 'gpt-4.1',
+        temperature: 1.10,
+        top_p: 0.95,
+        max_tokens: 3000,
+        messages: [
+            { role: 'system', content: getSystemPrompt(formattedDate) },
+            { role: 'user', content: messageContent }
+        ]
+    });
+
+    const content = resp?.choices?.[0]?.message?.content || '';
     const split = content.split(/\n+/);
     // Defensive cleanup: strip any accidental "Commentary:" labels (including *Commentary*:)
     const cleaned = split.map(line => line.replace(/\*?Commentary\*?:\s*/ig, ""));
-    // Prepend the formatted date so TTS reads it first
-    const text = [formattedDate, ...cleaned];
+    // Return model output (no extra date injection)
+    const text = cleaned;
     console.log(text);
     return { text };
 };
 
-// Tool-driven flow: a single batch wiki_search tool the model calls once per story
-async function runWithWikiTools(openai, urlsCsv) {
-    const urls = String(urlsCsv || '').split(',').map(s => s.trim()).filter(Boolean);
-
-    const tools = [
-        {
-            type: 'function',
-            function: {
-                name: 'wiki_search',
-                description: 'Batch search Wikipedia using the wikipedia npm package. Returns compact results by term.',
-                parameters: {
-                    type: 'object',
-                    properties: {
-                        terms: {
-                            type: 'array',
-                            description: 'Array of subjects to search on Wikipedia',
-                            items: { type: 'string' },
-                            minItems: 1
-                        },
-                        lang: { type: 'string', description: 'Language code, e.g., en', default: 'en' },
-                        limit: { type: 'integer', minimum: 1, maximum: 10, default: 1 }
-                    },
-                    required: ['terms']
-                }
-            }
-        }
-    ];
-
-    const messages = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-            role: 'user',
-            content:
-                `You will produce a comedic daily news rundown for the show "News for Schmucks." You are given article URLs: ${urls.join(', ')}.
-            
-                Wikipedia research tool:
-                - wiki_search(terms: string[], limit = 1, lang = 'en').
-                For the entire set of stories, first choose TWO distinct subjects per story to research on Wikipedia. Then make ONE SINGLE wiki_search call for the whole request with terms=[all chosen subjects], deduped, limit=1 per term. After receiving the tool results, write the final output for all stories in order. Do not call wiki_search more than once.
-                
-                Output requirements (strict):
-                - Start with a one-line welcome to "News for Schmucks."
-                - Then, for each provided headline, output exactly ONE line in this format: **N. Headline** 
-                - Number N starts at 1 and increases by 1 for each item.
-                - Put the number INSIDE the bold with the headline (e.g., **1. Headline** — ...).
-                - Do not include URLs or markdown links.
-                - Do not preface the commentary with labels like "Commentary:".
-                – Each news story should be about a 30 second read.
-                - End with a brief, snarky signoff.
-                `
-        }
-    ];
-
-    for (let step = 0; step < 8; step++) {
-        const resp = await openai.chat.completions.create({
-            model: 'gpt-4.1',
-            messages,
-            tools,
-            tool_choice: 'auto',
-            temperature: 1,
-        });
-
-        const choice = resp.choices?.[0];
-        if (!choice) throw new Error('No model choice returned');
-        const msg = choice.message;
-        const toolCalls = msg.tool_calls || [];
-
-        if (toolCalls.length) {
-            messages.push({ role: 'assistant', content: msg.content || '', tool_calls: toolCalls });
-            for (const call of toolCalls) {
-                const name = call.function?.name || call.name;
-                const argsText = call.function?.arguments || call.arguments || '{}';
-                let args; try { args = JSON.parse(argsText); } catch { args = {}; }
-
-                let result;
-                try {
-                    if (name === 'wiki_search') {
-                        const terms = Array.isArray(args.terms) ? args.terms.filter(Boolean).map(String) : [];
-                        const lang = String(args.lang || 'en');
-                        const limit = Math.max(1, Math.min(10, parseInt(args.limit, 10) || 1));
-                        // Deduplicate terms (case-insensitive) before searching to avoid duplicate payloads
-                        const seen = new Set();
-                        const uniqTerms = [];
-                        for (const t of terms) {
-                            const n = String(t).toLowerCase().trim();
-                            if (!n || seen.has(n)) continue;
-                            seen.add(n);
-                            uniqTerms.push(String(t).trim());
-                        }
-                        console.log(`[Tools] wiki_search terms=${JSON.stringify(uniqTerms)} lang = ${lang} limit = ${limit}`);
-
-                        result = await wikiBatchSearch(uniqTerms, { lang, limit });
-                    } else {
-                        result = { error: `Unknown tool: ${name}` };
-                    }
-                } catch (err) {
-                    result = { error: err?.message || String(err) };
-                }
-
-                messages.push({
-                    role: 'tool',
-                    tool_call_id: call.id,
-                    name,
-                    content: JSON.stringify(result).slice(0, 30000)
-                });
-            }
-            continue;
-        }
-
-        return msg.content || '';
-    }
-
-    throw new Error('Tool loop exceeded step limit');
-}
-
-
-
-// Batch Wikipedia search using the official 'wikipedia' npm package
-// Returns { by_term: { term: [{ x: extract }] } }
-async function wikiBatchSearch(terms, { lang = 'en', limit = 1 } = {}) {
-    const language = String(lang || 'en').toLowerCase();
-    try { await wiki.setLang(language); } catch { }
-
-    const by_term = {};
-
-    const list = Array.isArray(terms) ? terms : [];
-    const seen = new Set();
-    for (const raw of list) {
-        const term = String(raw || '').trim();
-        const key = term.toLowerCase();
-        if (!term || seen.has(key)) { if (term) by_term[term] = by_term[term] || []; continue; }
-        seen.add(key);
-        if (!term) { by_term[raw] = []; continue; }
-        try {
-            const searchRes = await wiki.search(term, { limit: Math.max(1, Math.min(10, parseInt(limit, 10) || 1)), suggestion: true });
-            const list = Array.isArray(searchRes?.results) ? searchRes.results : Array.isArray(searchRes) ? searchRes : [];
-            const picked = list.slice(0, Math.max(1, Math.min(10, parseInt(limit, 10) || 1)));
-
-            const out = [];
-            for (const r of picked) {
-                const title = r?.title || r?.page || r?.displaytitle || '';
-                if (!title) continue;
-                let extract = '';
-                try {
-                    const sum = await wiki.summary(title).catch(() => null);
-                    if (sum?.extract) extract = String(sum.extract);
-                } catch { }
-                out.push({ x: extract });
-            }
-            by_term[term] = out;
-        } catch {
-            by_term[term] = [];
-        }
-    }
-
-    return { by_term };
-}
-
-function stripHtml(html) {
-    return String(html || '')
-        .replace(/<span class=\"searchmatch\">/g, '')
-        .replace(/<\/span>/g, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-};;;
+// wiki tool flow and related functions removed as requested

@@ -1,6 +1,8 @@
 // runJob.js
-import { fetchHeadlines } from "./services/fetchHeadlines.js";
 import { summarizeNews } from "./services/summarizeNews.js";
+import { buildRedditBundles, toPromptBlocks } from "./services/buildRedditBundles.js";
+import { fetchOnThisDayEvent } from "./services/onThisDay.js";
+import { redditBundlesConfig } from "./config/redditBundles.config.js";
 import { clean } from "./services/clean.js";
 import { generateSpeech } from "./services/speech.js";
 import { saveFiles } from "./services/saveFiles.js";
@@ -13,10 +15,13 @@ export async function runJob() {
   logNotify(`[RunJob] Starting News for Schmucks job...`);
 
   try {
-    const urls = await fetchHeadlines(process.env.NEWS_API_KEY);
-    const summary = await summarizeNews(process.env.OPENAI_API_KEY, urls);
+    const bundles = await buildRedditBundles(redditBundlesConfig);
+    let onThisDay = '';
+    try { const ev = await fetchOnThisDayEvent(); onThisDay = ev?.text || ''; } catch {}
+    const prompt = toPromptBlocks(bundles, { ...(redditBundlesConfig.prompt || {}), onThisDayText: onThisDay });
+    const summary = await summarizeNews(process.env.OPENAI_API_KEY, null, { prompt });
     // Append the raw generated summary to persistent JSON log
-    await logSummary(summary, urls, "./");
+    await logSummary(summary, null, "./");
     const cleanText = clean(summary);
     const speech = await generateSpeech(process.env.OPENAI_API_KEY, cleanText);
     const duration = await getAudioDurationFromBuffer(speech);

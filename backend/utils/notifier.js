@@ -12,9 +12,9 @@ const DISCORD_LIMIT = 2000;
 // NOTE: Do not commit real webhook URLs to source control.
 const codeDefaults = {
   channels: {
-    // default: 'https://discord.com/api/webhooks/ID/TOKEN',
+    test: 'https://discord.com/api/webhooks/1415871530788851802/0QhsSFQsfeklwjmTAqLaiXZZXny8JtBY4cq7i5kFCGkOjR1ppjNnKKtONim89_SVGBk-',
   },
-  defaultChannel: 'default',
+  defaultChannel: 'test',
   defaultUsername: 'News for Schmucks',
   defaultAvatarUrl: undefined,
   timeoutMs: 10000,
@@ -154,12 +154,12 @@ export function logNotify(message, overrides) {
     // Always log locally
     // eslint-disable-next-line no-console
     console.log(message);
-  } catch {}
+  } catch { }
   try {
     // Post to Discord without blocking the caller
     Promise.resolve()
       .then(() => notify(message, overrides))
       // eslint-disable-next-line no-console
       .catch((err) => console.error('[logNotify] notify failed:', err?.message || err));
-  } catch {}
+  } catch { }
 }

@@ -407,7 +407,7 @@ app.post("/run-job", async (req, res) => {
 
     if (!expected || !tokensMatch(expected, provided)) {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
-      console.warn(`[/run-job] Unauthorized attempt from ${ip}`);
+      notify(`[/run-job] Unauthorized attempt from ${ip}`);
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
@@ -422,7 +422,6 @@ app.post("/run-job", async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-  logNotify(`[Server] Listening on http://${HOST}:${PORT}`);
-  logNotify(`[Server] Serving static from: ${staticPath}`);
-  notify(`⏱️ Backend started`);
+  console.log(`[Server] Listening on http://${HOST}:${PORT}`);
+  console.log(`[Server] Serving static from: ${staticPath}`);
 });

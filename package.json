@@ -8,7 +8,10 @@
     "run": "node ./backend/runJob.js",
     "test:text": "node ./backend/runTextOnly.js",
     "dev": "PORT=8080 node index.js",
-    "test:search": "node ./backend/scripts/testSearch.js"
+    "test:reddit:tone": "node ./backend/scripts/testRedditTone.js",
+    "test:reddit:bundles": "node ./backend/scripts/testRedditBundles.js",
+    "test:reddit:news": "node ./backend/scripts/testRedditNews.js",
+    "test:articles:extract": "node ./backend/scripts/testExtractArticles.js"
   },
   "dependencies": {
     "axios": "^1.6.7",
@@ -18,7 +21,8 @@
     "music-metadata": "^11.7.3",
     "node-fetch": "^3.3.2",
     "openai": "^5.19.1",
-    "wikipedia": "^2.1.2"
+    "@mozilla/readability": "^0.4.4",
+    "jsdom": "^24.1.0"
   },
   "devDependencies": {
     "serve": "^14.2.4"
