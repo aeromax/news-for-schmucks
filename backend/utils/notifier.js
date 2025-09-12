@@ -12,9 +12,9 @@ const DISCORD_LIMIT = 2000;
 // NOTE: Do not commit real webhook URLs to source control.
 const codeDefaults = {
   channels: {
-    test: 'REDACTED_DISCORD_WEBHOOK',
+    default: 'REDACTED_DISCORD_WEBHOOK',
   },
-  defaultChannel: 'test',
+  defaultChannel: 'news-for-schmucks',
   defaultUsername: 'News for Schmucks',
   defaultAvatarUrl: undefined,
   timeoutMs: 10000,
