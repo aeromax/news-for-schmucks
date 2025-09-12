@@ -6,7 +6,6 @@ import { redditBundlesConfig } from "./config/redditBundles.config.js";
 import { clean } from "./services/clean.js";
 import 'dotenv/config';
 import { logSummary } from "./services/summaryLogger.js";
-import { logNotify } from "./utils/notifier.js";
 
 export async function runTextOnlyJob() {
   console.log(`[RunTextOnly] Starting text-only generation...`);
@@ -19,8 +18,6 @@ export async function runTextOnlyJob() {
     // Append the raw generated summary to persistent JSONL log
     await logSummary(summary, null, "./");
     const cleanText = clean(summary);
-
-
 
     console.log("✅ Text-only generation complete (no audio, no save).");
   } catch (err) {
@@ -35,3 +32,4 @@ export async function runTextOnlyJob() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   runTextOnlyJob();
 }
+

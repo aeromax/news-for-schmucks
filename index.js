@@ -2,7 +2,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { notify, logNotify } from "./backend/utils/notifier.js";
+import { logNotify, notify } from "./backend/utils/notifier.js";
 import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 import { timingSafeEqual } from 'crypto';
@@ -32,8 +32,52 @@ app.get("/healthz", (req, res) => res.status(200).send("ok"));
 // Serve static assets
 app.use(express.static(staticPath));
 
-// Serve storage assets (audio, transcript)
+// Serve storage assets (audio, transcript) when present via static dir
+// Prefer /var/data if it exists, then fall back to configured storagePath
+app.use("/storage", express.static('/var/data'));
 app.use("/storage", express.static(storagePath));
+
+// Helper: find an asset across likely locations
+async function resolveAsset(relName) {
+  const candidates = [
+    path.join(storagePath, relName),
+    path.join(__dirname, 'var', 'data', relName),
+    path.join(__dirname, 'var', relName),
+    path.join(staticPath, 'storage', relName),
+  ];
+  for (const p of candidates) {
+    try {
+      const st = await fs.stat(p);
+      if (st && st.isFile()) return p;
+    } catch { }
+  }
+  return '';
+}
+
+// Unified storage endpoint to serve whitelisted files
+const STORAGE_MIME = new Map([
+  ['audio.mp3', 'audio/mpeg'],
+  ['transcript.json', 'application/json; charset=utf-8'],
+]);
+
+app.get('/storage/:name', async (req, res) => {
+  try {
+    const name = String(req.params.name || '').toLowerCase();
+    if (!STORAGE_MIME.has(name)) {
+      return res.status(404).json({ ok: false, error: 'not found' });
+    }
+    const file = await resolveAsset(name);
+    if (!file) return res.status(404).json({ ok: false, error: 'not found' });
+    res.set('Content-Type', STORAGE_MIME.get(name));
+    res.set('Cache-Control', 'no-store');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.sendFile(file);
+  } catch (err) {
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/storage] ${msg}`);
+    res.status(500).json({ ok: false });
+  }
+});
 
 // Root should serve the HTML file
 app.get("/", (req, res) => {
@@ -81,10 +125,11 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
     // msg += ` | ua:${ua} | tz:${tz} | lang:${lang}`;
     msg += ` | ua:${ua}`;
 
-    await notify(msg);
+    // Notification removed
     res.status(204).end();
   } catch (err) {
-    console.error('error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/notify-view] ${msg}`);
     res.status(500).json({ ok: false });
   }
 });
@@ -126,6 +171,9 @@ app.get('/api/logs', async (req, res) => {
     const provided = extractLogsPassword(req);
 
     if (!expected || !tokensMatch(expected, provided)) {
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+      const ua = req.get('user-agent') || 'unknown';
+      try { await notify(`[index.js:/api/logs] Unauthorized access from ${ip} | ua:${ua}`); } catch {}
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -162,7 +210,8 @@ app.get('/api/logs', async (req, res) => {
 
     res.json({ ok: true, date, count: entries.length, entries });
   } catch (err) {
-    console.error('[/logs] error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/logs] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
@@ -174,6 +223,9 @@ app.get('/api/logs/dates', async (req, res) => {
     const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
     if (!expected || !tokensMatch(expected, provided)) {
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+      const ua = req.get('user-agent') || 'unknown';
+      try { await notify(`[index.js:/api/logs/dates] Unauthorized access from ${ip} | ua:${ua}`); } catch {}
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -193,7 +245,8 @@ app.get('/api/logs/dates', async (req, res) => {
 
     res.json({ ok: true, dates });
   } catch (err) {
-    console.error('[/logs/dates] error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/logs/dates] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
@@ -394,7 +447,8 @@ app.get('/logs', async (req, res) => {
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
-    console.error('[/logs] error', err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/logs] ${msg}`);
     res.status(500).set('Content-Type', 'text/html; charset=utf-8').send('<!doctype html><html><body><h1>Error</h1><pre>' + (err?.message || 'Unknown error') + '</pre></body></html>');
   }
 });
@@ -407,17 +461,18 @@ app.post("/run-job", async (req, res) => {
 
     if (!expected || !tokensMatch(expected, provided)) {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
-      notify(`[/run-job] Unauthorized attempt from ${ip}`);
+      const ua = req.get('user-agent') || 'unknown';
+      console.warn(`[/run-job] Unauthorized attempt from ${ip}`);
+      try { await notify(`[index.js:/run-job] Unauthorized attempt from ${ip} | ua:${ua}`); } catch {}
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
     await runJob();
     res.status(200).json({ ok: true, message: "Job executed." });
-    notify(`⏱️ Job executed`);
   } catch (err) {
-    console.error("[/run-job] Failed:", err);
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/run-job] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
-    notify(`💥Job failed ${err}`);
   }
 });
 
