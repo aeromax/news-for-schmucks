@@ -1,4 +1,4 @@
-// scripts/testRedditNews.js
+// tests/testRedditNews.js
 import { fetchRedditNewsTop } from '../services/fetchRedditNews.js';
 import { logNotify } from '../utils/notifier.js';
 import { redditBundlesConfig } from '../config/redditBundles.config.js';

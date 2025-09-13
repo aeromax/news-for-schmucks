@@ -1,4 +1,4 @@
-// scripts/testRedditTone.js
+// tests/testRedditTone.js
 import { fetchRedditNewsTop } from '../services/fetchRedditNews.js';
 import { selectToneComments } from '../services/selectToneComments.js';
 import { logNotify } from '../utils/notifier.js';

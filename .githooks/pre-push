@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "[pre-push] Scanning for obvious secrets..."
+
+# Quick regex sweep for Discord webhook patterns in staged commits compared to origin
+if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+  RANGE="@{u}..HEAD"
+else
+  RANGE="HEAD~10..HEAD"
+fi
+
+matches=$(git grep -n -P "https?://(?:ptb\\.|canary\\.)?discord\\.com/api(?:/v\\d{1,2})?/webhooks/\\d{17,20}/[\\w-]{30,}" $RANGE || true)
+if [ -n "$matches" ]; then
+  echo "[pre-push] Potential Discord webhook(s) detected:"
+  echo "$matches"
+  echo "[pre-push] Please remove or move to environment variables before pushing."
+  exit 1
+fi
+
+# If gitleaks is installed locally, run it as well (non-fatal unless leaks found)
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "[pre-push] Running gitleaks..."
+  if ! gitleaks detect --no-git --redact --verbose; then
+    echo "[pre-push] Gitleaks found potential secrets. Aborting push."
+    exit 1
+  fi
+fi
+
+echo "[pre-push] No obvious secrets found. Proceeding."
+exit 0

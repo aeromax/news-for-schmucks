@@ -7,6 +7,7 @@ import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 import { timingSafeEqual } from 'crypto';
 import fs from "fs/promises";
+// Email sending disabled; replaced with Discord notify
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -74,7 +75,7 @@ app.get('/storage/:name', async (req, res) => {
     res.sendFile(file);
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/api/storage] ${msg}`);
+    logNotify(`[index.js:/storage] ${msg}`);
     res.status(500).json({ ok: false });
   }
 });
@@ -134,6 +135,87 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
   }
 });
 
+// Contact form endpoint
+const contactParser = express.json({ limit: '32kb' });
+const RATE_LIMIT = new Map(); // ip -> { lastTs, count }
+
+function tooMany(ip) {
+  const now = Date.now();
+  const rec = RATE_LIMIT.get(ip) || { lastTs: 0, count: 0 };
+  // Reset window every 5 minutes
+  if (now - rec.lastTs > 5 * 60 * 1000) { rec.count = 0; rec.lastTs = now; }
+  rec.count += 1;
+  rec.lastTs = now;
+  RATE_LIMIT.set(ip, rec);
+  return rec.count > 8; // max 8 posts per 5 minutes per IP
+}
+
+app.post('/contact', contactParser, async (req, res) => {
+  try {
+    const ipRaw = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+    const ipFirst = String(ipRaw).split(',')[0].trim();
+    const ip = ipFirst.startsWith('::ffff:') ? ipFirst.slice(7) : ipFirst;
+    if (tooMany(ip)) return res.status(429).json({ ok: false, error: 'Too many requests' });
+
+    const body = req.body || {};
+    const name = (body.name || '').toString().trim().slice(0, 200);
+    const email = (body.email || '').toString().trim().slice(0, 320);
+    const message = (body.message || '').toString().trim().slice(0, 5000);
+    const website = (body.website || '').toString().trim(); // honeypot
+    const human = !!body.human;
+    const dwellMs = parseInt(body.dwellMs || '0', 10) || 0;
+
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!isEmail) return res.status(400).json({ ok: false, error: 'Invalid email' });
+    if (!message) return res.status(400).json({ ok: false, error: 'Message required' });
+    if (website) return res.status(400).json({ ok: false, error: 'Blocked' });
+    if (!human) return res.status(400).json({ ok: false, error: 'Confirm human' });
+    if (dwellMs > 0 && dwellMs < 3000) return res.status(400).json({ ok: false, error: 'Too fast' });
+
+    const to = process.env.CONTACT_TO || 'newsforschmucks@maxpalmer.design';
+    const subject = `**Feedback from ${name || email}**`;
+    const lines = [
+      `Email: ${email}\n`,
+      `--- Message ---\n`,
+      message,
+      `\n--------------\nTime: ${new Date().toISOString()}`,
+    ];
+    const text = lines.join('');
+
+    // Log locally to a JSONL file (best-effort, non-blocking)
+    try {
+      const logLine = JSON.stringify({
+        ts: new Date().toISOString(), ip, name, email, dwellMs,
+        message
+      }) + '\n';
+      const logPath = path.join(storagePath, 'contact-messages.jsonl');
+      await fs.mkdir(path.dirname(logPath), { recursive: true }).catch(() => { });
+      await fs.appendFile(logPath, logLine, 'utf8').catch(() => { });
+    } catch { }
+
+    // Try to notify Discord, but do not fail the request if it errors
+    let notified = false;
+    try {
+      await notify(`📬 ${subject}\n\n${text}`);
+      notified = true;
+    } catch (err) {
+      logNotify(`[index.js:/contact] notify failed: ${err?.message || err}`);
+    }
+
+    const debug = (process.env.CONTACT_DEBUG || '').toLowerCase();
+    if (debug === '1' || debug === 'true') {
+      return res.json({ ok: true, notified });
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/contact] ${msg}`);
+    res.status(500).json({ ok: false, error: 'Server error' });
+  }
+});
+
+// Email transport verify endpoint removed (email disabled)
+
 // Simple token helpers
 function extractBearerToken(req) {
   const auth = req.get('authorization') || '';
@@ -164,8 +246,8 @@ function extractLogsPassword(req) {
 }
 
 // Password-protected endpoint to view JSONL summary logs (API)
-// Usage: GET /api/logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
-app.get('/api/logs', async (req, res) => {
+// Usage: GET /logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
+app.get('/logs', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
@@ -173,7 +255,7 @@ app.get('/api/logs', async (req, res) => {
     if (!expected || !tokensMatch(expected, provided)) {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
       const ua = req.get('user-agent') || 'unknown';
-      try { await notify(`[index.js:/api/logs] Unauthorized access from ${ip} | ua:${ua}`); } catch {}
+      try { await notify(`[index.js:/logs] Unauthorized access from ${ip} | ua:${ua}`); } catch { }
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -211,21 +293,21 @@ app.get('/api/logs', async (req, res) => {
     res.json({ ok: true, date, count: entries.length, entries });
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/api/logs] ${msg}`);
+    logNotify(`[index.js:/logs] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
 
 // List available log dates (filenames) (API)
-// GET /api/logs/dates (send password via header: x-logs-password)
-app.get('/api/logs/dates', async (req, res) => {
+// GET //logs/dates (send password via header: x-logs-password)
+app.get('/logs/dates', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
     if (!expected || !tokensMatch(expected, provided)) {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
       const ua = req.get('user-agent') || 'unknown';
-      try { await notify(`[index.js:/api/logs/dates] Unauthorized access from ${ip} | ua:${ua}`); } catch {}
+      try { await notify(`[index.js:/logs/dates] Unauthorized access from ${ip} | ua:${ua}`); } catch { }
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -246,7 +328,7 @@ app.get('/api/logs/dates', async (req, res) => {
     res.json({ ok: true, dates });
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/api/logs/dates] ${msg}`);
+    logNotify(`[index.js:/logs/dates] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
@@ -354,14 +436,14 @@ app.get('/logs', async (req, res) => {
       }
 
       async function fetchDates() {
-        const res = await fetch('/api/logs/dates', { headers: { 'x-logs-password': password } });
+        const res = await fetch('/logs/dates', { headers: { 'x-logs-password': password } });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load dates');
         return data.dates;
       }
 
       async function fetchEntries(date) {
-        const res = await fetch('/api/logs?date=' + encodeURIComponent(date) + '&limit=0', { headers: { 'x-logs-password': password } });
+        const res = await fetch('/logs?date=' + encodeURIComponent(date) + '&limit=0', { headers: { 'x-logs-password': password } });
         const data = await res.json();
         if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load logs');
         return data.entries || [];
@@ -463,7 +545,7 @@ app.post("/run-job", async (req, res) => {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
       const ua = req.get('user-agent') || 'unknown';
       console.warn(`[/run-job] Unauthorized attempt from ${ip}`);
-      try { await notify(`[index.js:/run-job] Unauthorized attempt from ${ip} | ua:${ua}`); } catch {}
+      try { await notify(`[index.js:/run-job] Unauthorized attempt from ${ip} | ua:${ua}`); } catch { }
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
