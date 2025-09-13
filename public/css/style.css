@@ -448,6 +448,8 @@ a {
 .contact-panel[hidden] {
   display: none !important;
 }
+.contact-form[hidden] { display: none !important; }
+#contact-result[hidden] { display: none !important; }
 
 .contact-panel.open {
   opacity: 1;
