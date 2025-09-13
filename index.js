@@ -126,7 +126,8 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
     // msg += ` | ua:${ua} | tz:${tz} | lang:${lang}`;
     msg += ` | ua:${ua}`;
 
-    // Notification removed
+    // Fire-and-forget notification
+    try { logNotify(msg); } catch {}
     res.status(204).end();
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
@@ -548,6 +549,13 @@ app.post("/run-job", async (req, res) => {
       try { await notify(`[index.js:/run-job] Unauthorized attempt from ${ip} | ua:${ua}`); } catch { }
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
+
+    // Notify that a job was started (include requester context)
+    try {
+      const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+      const ua = req.get('user-agent') || 'unknown';
+      logNotify(`[index.js:/run-job] Job start requested from ${ip} | ua:${ua}`);
+    } catch {}
 
     await runJob();
     res.status(200).json({ ok: true, message: "Job executed." });
