@@ -423,3 +423,61 @@ body {
   color: var(--light-gray);
   padding: 0.5rem 0 0.75rem;
 }
+
+/* Contact panel */
+.contact-panel {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+.contact-inner {
+  width: min(640px, 92vw);
+  background: var(--bg-1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.contact-title { margin: 0 0 8px; }
+
+.contact-back {
+  background: transparent;
+  border: none;
+  color: var(--light-gray);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.contact-form { display: grid; gap: 12px; }
+.field { display: grid; gap: 6px; }
+.field input,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+
+.checkbox { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.actions { display: flex; gap: 10px; }
+.actions button {
+  background: var(--blob-4);
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.form-error { color: #ff6b6b; font-size: 0.9rem; }
+.contact-result { font-size: 1rem; color: #fff; }
+
+/* Honeypot field hidden visually */
+.hp { position: absolute; left: -9999px; opacity: 0; }

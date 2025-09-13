@@ -59,7 +59,42 @@
         <div class="caption-scroll" aria-live="polite"></div>
       </div>
 
-      <footer class="site-footer" role="contentinfo">© 2025 Max Palmer</footer>
+      <footer class="site-footer" role="contentinfo">© 2025 Max Palmer · <a href="#" id="contact-link">Contact</a></footer>
+
+      <!-- Contact panel (hidden until opened by footer link) -->
+      <section id="contact-panel" class="contact-panel" hidden>
+        <div class="contact-inner" role="dialog" aria-modal="true" aria-labelledby="contact-title">
+          <button id="back-button" class="contact-back" type="button" aria-label="Back">← Back</button>
+          <h2 id="contact-title" class="contact-title">Contact</h2>
+          <form id="contact-form" class="contact-form" novalidate>
+            <div id="form-error" class="form-error" hidden></div>
+            <label class="field">
+              <span>Email</span>
+              <input id="email" name="email" type="email" required autocomplete="email" />
+            </label>
+            <label class="field">
+              <span>Name (optional)</span>
+              <input id="name" name="name" type="text" autocomplete="name" />
+            </label>
+            <label class="field">
+              <span>Message</span>
+              <textarea id="message" name="message" rows="5" required></textarea>
+            </label>
+            <!-- Honeypot -->
+            <input id="website" name="website" type="text" tabindex="-1" aria-hidden="true" autocomplete="off" class="hp" />
+            <label class="checkbox">
+              <input id="human-check" type="checkbox" /> I am not a robot
+            </label>
+            <div class="actions">
+              <button type="submit">Send</button>
+              <button type="button" id="cancel-contact">Cancel</button>
+            </div>
+          </form>
+          <div id="contact-result" class="contact-result" hidden>
+            Thanks — we’ll get back to you.
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -70,6 +105,7 @@
   <script src="js/blobAnimation.js"></script>
   <script src="js/notifyView.js"></script>
   <script src="js/captionSync.js"></script>
+  <script src="js/contactForm.js"></script>
 </body>
 
 </html>
