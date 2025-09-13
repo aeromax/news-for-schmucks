@@ -20,7 +20,9 @@
     openedAt = Date.now();
     if (mainPanel) mainPanel.hidden = true;
     if (contactPanel) {
-      contactPanel.hidden = false;
+      contactPanel.hidden = false; // make it mount in layout
+      // Next frame, add .open to trigger fade-in
+      requestAnimationFrame(() => contactPanel.classList.add('open'));
       // reset state
       document.getElementById('contact-result').hidden = true;
       form.hidden = false;
@@ -32,7 +34,15 @@
   }
 
   function hideContactPanel() {
-    if (contactPanel) contactPanel.hidden = true;
+    if (contactPanel) {
+      // Start fade-out
+      contactPanel.classList.remove('open');
+      const done = () => { contactPanel.hidden = true; contactPanel.removeEventListener('transitionend', onEnd); };
+      const onEnd = (e) => { if (!e || e.propertyName === 'opacity') done(); };
+      contactPanel.addEventListener('transitionend', onEnd, { once: true });
+      // Fallback in case transitionend doesn't fire
+      setTimeout(done, 220);
+    }
     if (mainPanel) mainPanel.hidden = false;
     try {
       form.reset();
