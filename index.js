@@ -173,11 +173,9 @@ app.post('/contact', contactParser, async (req, res) => {
     if (dwellMs > 0 && dwellMs < 3000) return res.status(400).json({ ok: false, error: 'Too fast' });
 
     const to = process.env.CONTACT_TO || 'newsforschmucks@maxpalmer.design';
-    const subject = `News for Schmucks — Feedback from ${name || email}`;
+    const subject = `**Feedback from ${name || email}**`;
     const lines = [
-      `Name: ${name || '(not provided)'}\n`,
       `Email: ${email}\n`,
-      `IP: ${ip}\n`,
       `--- Message ---\n`,
       message,
       `\n--------------\nTime: ${new Date().toISOString()}`,
@@ -191,14 +189,14 @@ app.post('/contact', contactParser, async (req, res) => {
         message
       }) + '\n';
       const logPath = path.join(storagePath, 'contact-messages.jsonl');
-      await fs.mkdir(path.dirname(logPath), { recursive: true }).catch(() => {});
-      await fs.appendFile(logPath, logLine, 'utf8').catch(() => {});
+      await fs.mkdir(path.dirname(logPath), { recursive: true }).catch(() => { });
+      await fs.appendFile(logPath, logLine, 'utf8').catch(() => { });
     } catch { }
 
     // Try to notify Discord, but do not fail the request if it errors
     let notified = false;
     try {
-      await notify(`📬 Contact form\nSubject: ${subject}\n\n${text}`);
+      await notify(`📬 ${subject}\n\n${text}`);
       notified = true;
     } catch (err) {
       logNotify(`[index.js:/contact] notify failed: ${err?.message || err}`);
