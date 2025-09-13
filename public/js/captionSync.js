@@ -464,7 +464,7 @@ function setCaptionPos(px) {
   // Positive translate moves content down; offset keeps initial position below the box
   const startOffset = container.clientHeight || 0;
   // Nudge up by 20px overall (decrease translateY by 20)
-  scrollDiv.style.transform = `translateY(${startOffset - captionPosPx - 20}px)`;
+  scrollDiv.style.transform = `translateY(${startOffset - captionPosPx}px)`;
 }
 
 // Removed CSS animation init; JS-driven transform handles all scrolling now.
