@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+User-agent: facebookexternalhit
+Allow: /
 
 # Add your production sitemap URL when available:
 # Sitemap: https://your-domain.example/sitemap.xml
