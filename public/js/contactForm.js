@@ -124,7 +124,7 @@
     showContactPanel();
   });
 
-  cancelButton?.addEventListener('click', hideContactPanel);
-  backButton?.addEventListener('click', hideContactPanel);
+  cancelButton?.addEventListener('click', (e) => { e.preventDefault(); hideContactPanel(); });
+  backButton?.addEventListener('click', (e) => { e.preventDefault(); hideContactPanel(); });
   form?.addEventListener('submit', handleSubmit);
 })();

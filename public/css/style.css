@@ -434,6 +434,9 @@ body {
   z-index: 1000;
 }
 
+/* Ensure hidden state actually hides overlay regardless of other display rules */
+.contact-panel[hidden] { display: none !important; }
+
 .contact-inner {
   width: min(640px, 92vw);
   background: var(--bg-1);
