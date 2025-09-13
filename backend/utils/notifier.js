@@ -3,7 +3,7 @@
 
 import https from 'https';
 import { URL } from 'url';
-
+import 'dotenv/config';
 // Discord content limit per message
 const DISCORD_LIMIT = 2000;
 
@@ -12,9 +12,10 @@ const DISCORD_LIMIT = 2000;
 // NOTE: Do not commit real webhook URLs to source control.
 const codeDefaults = {
   channels: {
-    default: 'REDACTED_DISCORD_WEBHOOK',
+    default: process.env.DISCORD_WEBHOOK_URL,
   },
-  defaultChannel: 'news-for-schmucks',
+  // Use 'default' to align with env-based fallback (DISCORD_WEBHOOK_URL)
+  defaultChannel: 'default',
   defaultUsername: 'News for Schmucks',
   defaultAvatarUrl: undefined,
   timeoutMs: 10000,
