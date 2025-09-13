@@ -98,7 +98,7 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
     const lang = meta.lang || 'unknown-lang';
 
     // Start with ip, then append host/city/region and a newline, then other fields
-    let msg = `🙋 Site view: ${pathViewed} ● ip:${ip}`;
+    let msg = `🙋 Site view: ● ip:${ip}`;
 
     // Try reverse DNS + geo lookup (non-fatal); add a newline right after this block
     try {
@@ -124,10 +124,10 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
 
     // Append remaining metadata after the newline
     // msg += ` | ua:${ua} | tz:${tz} | lang:${lang}`;
-    msg += ` | ua:${ua}`;
+    // msg += ` | ua:${ua}`;
 
     // Fire-and-forget notification
-    try { logNotify(msg); } catch {}
+    try { logNotify(msg); } catch { }
     res.status(204).end();
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
@@ -555,7 +555,7 @@ app.post("/run-job", async (req, res) => {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
       const ua = req.get('user-agent') || 'unknown';
       logNotify(`[index.js:/run-job] Job start requested from ${ip} | ua:${ua}`);
-    } catch {}
+    } catch { }
 
     await runJob();
     res.status(200).json({ ok: true, message: "Job executed." });
