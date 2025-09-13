@@ -28,6 +28,11 @@ body {
   font-family: "Poppins", "Helvetica Neue", Helvetica, sans-serif;
 }
 
+a {
+  text-decoration: underline;
+  color: inherit;
+}
+
 .container {
   background: var(--bg-1);
   width: 100%;
@@ -440,7 +445,9 @@ body {
 }
 
 /* Ensure hidden state actually hides overlay regardless of other display rules */
-.contact-panel[hidden] { display: none !important; }
+.contact-panel[hidden] {
+  display: none !important;
+}
 
 .contact-panel.open {
   opacity: 1;
@@ -460,9 +467,13 @@ body {
   transition: transform 180ms ease-in-out;
 }
 
-.contact-panel.open .contact-inner { transform: translateY(0) scale(1); }
+.contact-panel.open .contact-inner {
+  transform: translateY(0) scale(1);
+}
 
-.contact-title { margin: 0 0 8px; }
+.contact-title {
+  margin: 0 0 8px;
+}
 
 .contact-back {
   background: transparent;
@@ -472,8 +483,16 @@ body {
   font-size: 0.9rem;
 }
 
-.contact-form { display: grid; gap: 12px; }
-.field { display: grid; gap: 6px; }
+.contact-form {
+  display: grid;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
 .field input,
 .field textarea {
   width: 100%;
@@ -484,8 +503,18 @@ body {
   color: #fff;
 }
 
-.checkbox { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
-.actions { display: flex; gap: 10px; }
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
 .actions button {
   background: var(--blob-4);
   color: #fff;
@@ -495,8 +524,36 @@ body {
   cursor: pointer;
 }
 
-.form-error { color: #ff6b6b; font-size: 0.9rem; }
-.contact-result { font-size: 1rem; color: #fff; }
+.form-error {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+}
+
+.contact-result {
+  font-size: 1rem;
+  color: #fff;
+}
+
+/* Success-state back button styled like primary */
+.contact-result .contact-back {
+  display: inline-block;
+  margin-top: 10px;
+  background: var(--blob-4);
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.contact-result .contact-back:focus {
+  outline: none;
+  box-shadow: 0 0 0 6px rgba(255, 48, 131, 0.12), 0 6px 14px rgba(0, 0, 0, 0.35);
+}
 
 /* Honeypot field hidden visually */
-.hp { position: absolute; left: -9999px; opacity: 0; }
+.hp {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+}
