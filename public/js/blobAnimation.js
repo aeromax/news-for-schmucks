@@ -20,11 +20,19 @@
     return isAppleMobile || isTouchMac;
   })();
 
-  /* Web Audio setup (disabled globally for reliable audio output; enable via ?webaudio=1) */
+  /* Web Audio setup (opt-in via URL or toggle; default off) */
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   let ctx, analyser, sourceNode, data, rafId;
   const params = new URLSearchParams(location.search);
-  let useWebAudio = params.get('webaudio') === '1' && !!AudioCtx && !isIOS;
+  const urlOptIn = params.get('webaudio') === '1';
+  const LS_KEY = 'nfs_visuals';
+  const getPref = () => (typeof localStorage !== 'undefined' && localStorage.getItem(LS_KEY) === 'on');
+  const setPref = (on) => { try { localStorage.setItem(LS_KEY, on ? 'on' : 'off'); } catch {} };
+  // Enable when explicitly opted in (URL or stored pref) and API exists. Allow iOS only when opted in.
+  let useWebAudio = (!!AudioCtx) && (urlOptIn || getPref());
+  const ua = navigator.userAgent || '';
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  let audioRouted = false; // if true, audio flows through ctx and element is muted
 
   function ensureAudioGraph() {
     if (!useWebAudio) return;
@@ -37,10 +45,37 @@
         data = new Uint8Array(analyser.frequencyBinCount);
       }
       if (!sourceNode && audio) {
-        // Tap the HTMLAudioElement into the analyser; do NOT route to destination.
-        // The element itself produces sound; analyser is visuals-only.
-        sourceNode = ctx.createMediaElementSource(audio);
-        sourceNode.connect(analyser);
+        // Prefer captureStream to avoid touching element audio path (Chrome/Firefox).
+        const canCapture = typeof audio.captureStream === 'function';
+        if (canCapture) {
+          const stream = audio.captureStream();
+          if (stream) {
+            sourceNode = ctx.createMediaStreamSource(stream);
+            sourceNode.connect(analyser);
+            audioRouted = false; // element remains audible
+            if (audio) audio.muted = false;
+          }
+        }
+        // Fallback: tap element directly.
+        if (!sourceNode) {
+          sourceNode = ctx.createMediaElementSource(audio);
+          sourceNode.connect(analyser);
+          if (isSafari || isIOS) {
+            // Safari/iOS: route through destination and mute element to avoid odd silencing.
+            try {
+              analyser.connect(ctx.destination);
+              if (audio) audio.muted = true;
+              audioRouted = true;
+            } catch (_) {
+              audioRouted = false;
+              if (audio) audio.muted = false;
+            }
+          } else {
+            // Chrome/Firefox: leave element as the audible path.
+            audioRouted = false;
+            if (audio) audio.muted = false;
+          }
+        }
       }
     } catch (err) {
       // If WebAudio setup fails (CORS, multiple connections, etc),
@@ -54,7 +89,21 @@
       sourceNode = null;
       analyser = null;
       data = null;
+      if (audio) audio.muted = false;
+      audioRouted = false;
     }
+  }
+
+  function disableAudioGraph() {
+    try {
+      if (sourceNode) { try { sourceNode.disconnect(); } catch(_){} }
+      if (analyser)  { try { analyser.disconnect(); } catch(_){} }
+    } catch(_) {}
+    sourceNode = null;
+    analyser = null;
+    data = null;
+    if (audio) audio.muted = false;
+    audioRouted = false;
   }
 
   /* ---------- amplitude-driven scaling ---------- */
@@ -103,8 +152,8 @@
     }
     try {
       if (audio) {
-        // Ensure not muted and sane volume (element outputs sound directly)
-        audio.muted = false;
+        // Ensure sane volume; unmute unless routed through graph
+        audio.muted = !!audioRouted;
         if (!(audio.volume > 0)) audio.volume = 1;
       }
       await audio.play();
@@ -138,6 +187,28 @@
           try { ctx.resume(); } catch {}
         }
         animateBlobs();
+      }
+    });
+  }
+
+  // Hook up UI toggle (persisted opt-in)
+  const visualsToggle = document.getElementById('visuals-toggle');
+  if (visualsToggle) {
+    // Initialize state from preference or URL param
+    const initialOn = (urlOptIn || getPref()) && !!AudioCtx;
+    visualsToggle.checked = initialOn;
+    // Keep internal flag in sync
+    useWebAudio = initialOn;
+    visualsToggle.addEventListener('change', () => {
+      const on = !!visualsToggle.checked && !!AudioCtx;
+      setPref(on);
+      // Update flag
+      useWebAudio = on;
+      if (!on) {
+        disableAudioGraph();
+      } else {
+        // Only create graph after a user gesture; if already playing, this counts
+        if (!audio.paused) ensureAudioGraph();
       }
     });
   }
