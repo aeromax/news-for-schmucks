@@ -44,7 +44,7 @@ a {
 }
 
 .content-wrapper {
-  height: 90%;
+  height: 100%;
   width: 100%;
   max-width: 700px;
   display: flex;
@@ -391,8 +391,9 @@ a {
   }
 
   .headline {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     padding: 0 1rem;
+    letter-spacing: -4px;
   }
 
   .subhead {
@@ -448,8 +449,14 @@ a {
 .contact-panel[hidden] {
   display: none !important;
 }
-.contact-form[hidden] { display: none !important; }
-#contact-result[hidden] { display: none !important; }
+
+.contact-form[hidden] {
+  display: none !important;
+}
+
+#contact-result[hidden] {
+  display: none !important;
+}
 
 .contact-panel.open {
   opacity: 1;
