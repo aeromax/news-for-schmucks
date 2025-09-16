@@ -111,6 +111,7 @@ export function toPromptBlocks(bundles, opts = {}) {
   const pc = redditBundlesConfig?.prompt || {};
   const maxCommentLen = Number.isFinite(opts.maxCommentLen) ? opts.maxCommentLen : (Number.isFinite(pc.maxCommentLen) ? pc.maxCommentLen : 280);
   const maxCommentsPerStory = Number.isFinite(opts.maxCommentsPerStory) ? opts.maxCommentsPerStory : (Number.isFinite(pc.maxCommentsPerStory) ? pc.maxCommentsPerStory : 8);
+  const maxSelftextLen = Number.isFinite(opts.maxSelftextLen) ? opts.maxSelftextLen : (Number.isFinite(pc.maxSelftextLen) ? pc.maxSelftextLen : 300);
   const showMeta = typeof opts.showMeta === 'boolean' ? opts.showMeta : (pc.showMeta === true);
   const showScore = typeof opts.showScore === 'boolean' ? opts.showScore : (pc.showScore === true);
   const showTone = typeof opts.showTone === 'boolean' ? opts.showTone : (pc.showTone === true);
@@ -137,7 +138,7 @@ export function toPromptBlocks(bundles, opts = {}) {
       const trimmed = s.length > maxSummaryLen ? `${s.slice(0, maxSummaryLen)}…` : s;
       lines.push(`Summary: ${trimmed}`);
     }
-    if (b.selftext) lines.push(`Selftext: ${b.selftext.slice(0, 300)}${b.selftext.length > 300 ? '…' : ''}`);
+    if (b.selftext) lines.push(`Selftext: ${b.selftext.slice(0, maxSelftextLen)}${b.selftext.length > maxSelftextLen ? '…' : ''}`);
     if (showRedditLink && b.permalink) lines.push(`Reddit: https://www.reddit.com${b.permalink}`);
     // pick top comments by tone then score
     const selected = (b.comments || [])

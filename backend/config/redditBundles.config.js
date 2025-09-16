@@ -39,6 +39,8 @@ export const redditBundlesConfig = {
   prompt: {
     maxCommentsPerStory: 6,
     maxCommentLen: 200,
+    // Max characters from a Reddit post's selftext to include
+    maxSelftextLen: 300,
     showMeta: false,    // if false, meta below is ignored
     showScore: false,
     showTone: false,
