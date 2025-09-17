@@ -17,7 +17,7 @@ export async function runJob() {
   try {
     const bundles = await buildRedditBundles(redditBundlesConfig);
     let onThisDay = '';
-    try { const ev = await fetchOnThisDayEvent(); onThisDay = ev?.text || ''; } catch {}
+    try { const ev = await fetchOnThisDayEvent(); onThisDay = ev?.text || ''; } catch { }
     const prompt = toPromptBlocks(bundles, { ...(redditBundlesConfig.prompt || {}), onThisDayText: onThisDay });
     const summary = await summarizeNews(process.env.OPENAI_API_KEY, null, { prompt });
     // Append the raw generated summary to persistent JSON log
@@ -38,7 +38,7 @@ export async function runJob() {
 function showErr(err) {
   if (err?.stack) {
     console.error(err.stack);
-    try { logNotify(`[runJob.js] ${err.stack}`); } catch {}
+    try { logNotify(`[runJob.js] ${err.stack}`); } catch { }
     return;
   }
 
@@ -47,17 +47,17 @@ function showErr(err) {
     const text = data.toString("utf8");
     try {
       console.error("[HTTP Error JSON]", JSON.parse(text));
-      try { logNotify(`[runJob.js] [HTTP Error JSON] ${text}`); } catch {}
+      try { logNotify(`[runJob.js] [HTTP Error JSON] ${text}`); } catch { }
     } catch {
       console.error("💥[Backend job: HTTP Error Text]", text);
-      try { logNotify(`[runJob.js] [HTTP Error Text] ${text}`); } catch {}
+      try { logNotify(`[runJob.js] [HTTP Error Text] ${text}`); } catch { }
     }
   } else {
     console.error("💥[Backend job: Error]", data);
     try {
       const msg = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
       logNotify(`[runJob.js] ${msg}`);
-    } catch {}
+    } catch { }
   }
 }
 

@@ -13,7 +13,7 @@ export async function logSummary(summary, urls, baseDir = "./") {
       : (process.env.NODE_ENV === 'production' ? '/var/data' : path.join(baseDir, 'storage'));
 
     const logsDir = path.join(storageDir, "summaries");
-
+    await fs.mkdir(logsDir, { recursive: true });
 
 
     const now = new Date();

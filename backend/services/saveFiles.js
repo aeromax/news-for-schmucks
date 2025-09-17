@@ -2,6 +2,7 @@
 
 import fs from "fs/promises";
 import path from "path";
+import { buildVisualizerData } from "./buildVisualizerData.js";
 
 export async function saveFiles(baseDir, transcriptText, audioBuffer) {
     // Resolve storage directory from env (e.g., /var/data on Render) or local fallback
@@ -19,4 +20,11 @@ export async function saveFiles(baseDir, transcriptText, audioBuffer) {
 
     await fs.writeFile(audioPath, audioBuffer);
     await fs.writeFile(transcriptPath, JSON.stringify({ captions: transcriptText }, null, 2));
+
+    try {
+        const visualsPath = path.join(storageDir, "visuals.json");
+        await buildVisualizerData(audioPath, visualsPath);
+    } catch (err) {
+        console.warn("[visuals] generation failed", err?.message || err);
+    }
 }
