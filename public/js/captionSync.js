@@ -18,6 +18,12 @@ const formatBoldCaptions = (text) =>
 document.addEventListener("DOMContentLoaded", () => {
   loadCaptionsFromJSON(`/storage/transcript.json?nocache=${Date.now()}`);
   initLinearProgress();
+
+  const visualsToggle = document.getElementById("visuals-toggle");
+  if (visualsToggle && !visualsToggle.checked) {
+    visualsToggle.checked = true;
+    visualsToggle.dispatchEvent(new Event("change", { bubbles: true }));
+  }
 });
 
 async function loadCaptionsFromJSON(jsonUrl) {
