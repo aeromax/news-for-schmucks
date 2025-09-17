@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "run": "node ./backend/runJob.js",
+    "run": "sudo env 'PATH=$PATH' node backend/runJob.js",
     "test:text": "node ./backend/runTextOnly.js",
     "dev": "PORT=8080 node index.js",
     "test:reddit:tone": "node ./backend/tests/testRedditTone.js",
