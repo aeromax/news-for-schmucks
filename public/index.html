@@ -58,7 +58,7 @@
         <div class="headline">
           <h1>News for <span style="color:#ff3083;">Schmucks.</span></h1>
         </div>
-        <div class="subhead">We don't break the news. Just its spirit</div>
+        <div class="subhead">We don't break the news. Just its spirit.</div>
       </div>
 
       <!-- Blobs -->
@@ -102,9 +102,7 @@
         <div class="caption-scroll" aria-live="polite"></div>
       </div>
 
-      <footer class="site-footer" role="contentinfo">© 2025 Max Palmer • Got somethin' to say? <a href="#"
-          id="contact-link" aria-controls="contact-panel">Contact us</a>
-      </footer>
+
 
       <!-- Contact panel (hidden until opened by footer link) -->
       <section id="contact-panel" class="contact-panel" hidden>
@@ -142,6 +140,23 @@
         </div>
       </section>
     </div>
+    <footer class="site-footer" role="contentinfo">
+      <div class="footer-copy">© 2025 Max Palmer</div>
+      <div>📫Got somethin' to say? <a class="footer-contact" href="#" id="contact-link" aria-controls="contact-panel">
+          Contact
+          me</a>
+      </div>
+      <div class="footer-donation">
+        <span class="donation-text">If you think this is entertaining</span>
+        <div class="donation-widget" id="kofi-donation">
+          <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+          <script type='text/javascript'>
+            kofiwidget2.init('Buy me a coffee!', '#ff3083', 'F1F61LDAYF');
+            kofiwidget2.draw('kofi-donation');
+          </script>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <audio class="audio" src="/storage/audio.mp3" preload="auto" playsinline crossorigin="anonymous">
@@ -152,6 +167,7 @@
   <script src="js/notifyView.js"></script>
   <script src="js/captionSync.js"></script>
   <script src="js/contactForm.js"></script>
+
 </body>
 
 </html>
