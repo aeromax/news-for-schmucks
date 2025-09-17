@@ -93,6 +93,7 @@ a {
 
 .caption-box {
   margin: 3rem 0 0;
+  height: 100%;
   flex-grow: 1;
   bottom: 0;
   font-size: 1.2rem;
@@ -154,7 +155,7 @@ a {
   position: relative;
   cursor: pointer;
   width: auto;
-  height: 30%;
+  height: 100%;
   aspect-ratio: 1 / 1;
   max-width: 100%;
   margin: 2rem auto;
