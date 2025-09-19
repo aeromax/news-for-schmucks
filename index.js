@@ -97,6 +97,13 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
     const tz = meta.tz || 'unknown-tz';
     const lang = meta.lang || 'unknown-lang';
 
+    const ipLower = ip.toLowerCase();
+    const blockedIps = new Set(['0.0.0.0', '38.81.107.160', 'localhost', '127.0.0.1']);
+    const isInternalIp = ipLower.startsWith('192.168.');
+    if (blockedIps.has(ipLower) || isInternalIp) {
+      return res.status(204).end();
+    }
+
     // Start with ip, then append host/city/region and a newline, then other fields
     let msg = `🙋 Site view: ● ip:${ip}`;
 
