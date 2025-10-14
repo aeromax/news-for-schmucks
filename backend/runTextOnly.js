@@ -14,7 +14,7 @@ export async function runTextOnlyJob() {
     let onThisDay = '';
     try { const ev = await fetchOnThisDayEvent(); onThisDay = ev?.text || ''; } catch {}
     const prompt = toPromptBlocks(bundles, { ...(redditBundlesConfig.prompt || {}), onThisDayText: onThisDay });
-    const summary = await summarizeNews(process.env.OPENAI_API_KEY, null, { prompt });
+    const summary = await summarizeNews(process.env.OPENAI_API_KEY, null, { prompt, storageBaseDir: "./" });
     // Append the raw generated summary to persistent JSONL log
     await logSummary(summary, null, "./");
     const cleanText = clean(summary);
@@ -32,4 +32,3 @@ export async function runTextOnlyJob() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   runTextOnlyJob();
 }
-

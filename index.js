@@ -7,6 +7,7 @@ import { runJob } from "./backend/runJob.js";
 import 'dotenv/config';
 import { timingSafeEqual } from 'crypto';
 import fs from "fs/promises";
+import { listInstructions, upsertInstruction, removeInstruction } from "./backend/services/summarizerInstructions.js";
 // Email sending disabled; replaced with Discord notify
 
 
@@ -146,6 +147,7 @@ app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
 // Contact form endpoint
 const contactParser = express.json({ limit: '32kb' });
 const RATE_LIMIT = new Map(); // ip -> { lastTs, count }
+const adminJsonParser = express.json({ limit: '16kb' });
 
 function tooMany(ip) {
   const now = Date.now();
@@ -253,6 +255,19 @@ function extractLogsPassword(req) {
   return '';
 }
 
+async function ensureAdminAuth(req, res, label) {
+  const expected = process.env.LOGS_PASSWORD || '';
+  const provided = extractLogsPassword(req);
+  if (!expected || !tokensMatch(expected, provided)) {
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+    const ua = req.get('user-agent') || 'unknown';
+    try { await notify(`[index.js:${label}] Unauthorized access from ${ip} | ua:${ua}`); } catch { }
+    res.status(401).json({ ok: false, error: 'Unauthorized' });
+    return false;
+  }
+  return true;
+}
+
 // Password-protected endpoint to view JSONL summary logs (API)
 // Usage: GET /logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
 app.get('/logs', async (req, res) => {
@@ -303,6 +318,303 @@ app.get('/logs', async (req, res) => {
     const msg = err?.stack || err?.message || String(err);
     logNotify(`[index.js:/logs] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
+  }
+});
+
+// Summarizer instruction admin API
+app.get('/api/instructions', async (req, res) => {
+  try {
+    if (!await ensureAdminAuth(req, res, '/api/instructions')) return;
+    const instructions = await listInstructions(__dirname);
+    res.json({ ok: true, instructions });
+  } catch (err) {
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/instructions(GET)] ${msg}`);
+    res.status(500).json({ ok: false, error: 'Failed to load instructions' });
+  }
+});
+
+app.post('/api/instructions', adminJsonParser, async (req, res) => {
+  try {
+    if (!await ensureAdminAuth(req, res, '/api/instructions')) return;
+    const body = req.body || {};
+    const type = body?.type === 'next' ? 'next' : 'date';
+    const text = body?.text ?? '';
+    const date = type === 'date' ? (body?.date || '') : undefined;
+    const instructions = await upsertInstruction({ type, date, text }, __dirname);
+    res.json({ ok: true, instructions });
+  } catch (err) {
+    const status = err?.message === 'Instruction text required' || err?.message?.includes('Date is required') ? 400 : 500;
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/instructions(POST)] ${msg}`);
+    res.status(status).json({ ok: false, error: err?.message || 'Failed to save instruction' });
+  }
+});
+
+app.delete('/api/instructions/:key', async (req, res) => {
+  try {
+    if (!await ensureAdminAuth(req, res, '/api/instructions')) return;
+    const key = String(req.params?.key || '').trim() || '';
+    const instructions = await removeInstruction(key || undefined, __dirname);
+    res.json({ ok: true, instructions });
+  } catch (err) {
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/api/instructions(DELETE)] ${msg}`);
+    res.status(500).json({ ok: false, error: 'Failed to delete instruction' });
+  }
+});
+
+// Simple HTML admin page for instructions
+app.get('/admin/instructions', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>News for Schmucks — Summarizer Instructions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root { --bg:#0b0c10; --fg:#eaf0f6; --muted:#9ea7b3; --accent:#ff3083; --card:#15171c; }
+      body { margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+      h1 { margin:0 0 12px; font-size:20px; }
+      main { max-width: 840px; margin: 40px auto; padding: 0 20px 40px; }
+      section { background:var(--card); border:1px solid #232730; border-radius:12px; padding:20px; margin-bottom:20px; }
+      label { display:block; font-weight:600; margin-bottom:6px; }
+      input[type="date"], textarea { width:100%; background:#0f1218; color:var(--fg); border:1px solid #303540; border-radius:6px; padding:8px; box-sizing:border-box; }
+      textarea { min-height:100px; resize:vertical; }
+      button { background:var(--accent); color:#0b0c10; border:none; border-radius:6px; padding:10px 16px; font-weight:600; cursor:pointer; }
+      button.secondary { background:#222836; color:var(--fg); }
+      ul { list-style:none; margin:0; padding:0; }
+      li { border:1px solid #232730; border-radius:10px; padding:14px; margin-bottom:12px; background:#10131b; display:flex; gap:12px; justify-content:space-between; align-items:flex-start; }
+      .muted { color:var(--muted); font-size:13px; }
+      #login { max-width: 420px; margin: 18vh auto; background: var(--card); padding: 24px; border-radius: 10px; border:1px solid #232730; }
+      #login h2 { margin: 0 0 12px; font-size: 18px; }
+      #login form { display:flex; gap: 8px; }
+      #login input { flex:1; background:#0f1218; color:var(--fg); border:1px solid #303540; border-radius:6px; padding:8px; }
+      #error { color:#ff6b6b; margin-top:10px; min-height:1em; }
+      #app { display:none; }
+      .entry-text { white-space:pre-wrap; margin:0; }
+      .entry-meta { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+      .entry-actions { display:flex; gap:8px; }
+      @media (max-width:720px) {
+        main { margin: 24px auto; }
+        li { flex-direction:column; }
+        .entry-actions { width:100%; justify-content:flex-end; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="login">
+      <h2>Admin Access</h2>
+      <p class="muted">Enter the logs password to manage summarizer intro instructions.</p>
+      <form id="loginForm">
+        <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required />
+        <button type="submit">Unlock</button>
+      </form>
+      <div id="error"></div>
+    </div>
+
+    <div id="app">
+      <main>
+        <header>
+          <h1>Summarizer Intro Instructions</h1>
+          <p class="muted">Schedule specific intro notes or queue one for the very next run.</p>
+        </header>
+
+        <section>
+          <h2 style="margin-top:0;">Add or Update Date-Specific Instruction</h2>
+          <form id="dateForm">
+            <label for="dateInput">Run date (YYYY-MM-DD)</label>
+            <input id="dateInput" type="date" value="${today}" required />
+            <label for="dateText">Instruction (max 500 characters)</label>
+            <textarea id="dateText" maxlength="500" placeholder="Example: Remind folks about the live show this Thursday."></textarea>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+              <button type="submit">Save for Date</button>
+              <button type="button" id="clearDate" class="secondary">Remove Date Instruction</button>
+            </div>
+          </form>
+        </section>
+
+        <section>
+          <h2 style="margin-top:0;">Next Run Instruction</h2>
+          <p class="muted">This will be consumed by the very next job that runs.</p>
+          <form id="nextForm">
+            <label for="nextText">Instruction to say after the history line</label>
+            <textarea id="nextText" maxlength="500" placeholder="Example: Oh, and happy Hanukkah, schmucks. Light those candles."></textarea>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+              <button type="submit">Save for Next Run</button>
+              <button type="button" id="clearNext" class="secondary">Clear Next Run</button>
+            </div>
+          </form>
+        </section>
+
+        <section>
+          <h2 style="margin-top:0;">Current Instructions</h2>
+          <ul id="list"></ul>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const elLogin = document.getElementById('login');
+      const elForm = document.getElementById('loginForm');
+      const elPw = document.getElementById('pw');
+      const elErr = document.getElementById('error');
+      const elApp = document.getElementById('app');
+      const elList = document.getElementById('list');
+      const elDateForm = document.getElementById('dateForm');
+      const elNextForm = document.getElementById('nextForm');
+      const elDateInput = document.getElementById('dateInput');
+      const elDateText = document.getElementById('dateText');
+      const elNextText = document.getElementById('nextText');
+      const elClearDate = document.getElementById('clearDate');
+      const elClearNext = document.getElementById('clearNext');
+
+      let password = '';
+
+      async function api(method, url, body) {
+        const res = await fetch(url, {
+          method,
+          headers: {
+            'x-logs-password': password,
+            'Content-Type': 'application/json'
+          },
+          body: body ? JSON.stringify(body) : null
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
+        return data.instructions;
+      }
+
+      function renderList(data) {
+        const entries = [];
+        if (data.next && data.next.text) {
+          entries.push({
+            id: 'next',
+            label: 'Next Run',
+            text: data.next.text,
+            updatedAt: data.next.updatedAt
+          });
+        }
+        const dates = Object.keys(data.byDate || {}).sort();
+        for (const d of dates) {
+          entries.push({
+            id: d,
+            label: d,
+            text: data.byDate[d]?.text || '',
+            updatedAt: data.byDate[d]?.updatedAt
+          });
+        }
+
+        if (entries.length === 0) {
+          elList.innerHTML = '<li><div><strong>No instructions scheduled.</strong><p class="muted">Add one above to customize the intro.</p></div></li>';
+          return;
+        }
+
+        elList.innerHTML = entries.map(e => {
+          const meta = e.updatedAt ? new Date(e.updatedAt).toLocaleString() : '';
+          const escaped = e.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return '<li data-id="' + e.id + '">\
+            <div style="flex:1;">\
+              <div class="entry-meta"><strong>' + e.label + '</strong>' + (meta ? '<span class="muted">Updated ' + meta + '</span>' : '') + '</div>\
+              <p class="entry-text">' + escaped + '</p>\
+            </div>\
+            <div class="entry-actions">\
+              <button type="button" class="secondary" data-remove="' + e.id + '">Delete</button>\
+            </div>\
+          </li>';
+        }).join('');
+      }
+
+      async function refreshList() {
+        const data = await api('GET', '/api/instructions');
+        renderList(data);
+      }
+
+      elList.addEventListener('click', async (evt) => {
+        const id = evt.target?.dataset?.remove;
+        if (!id) return;
+        try {
+          await api('DELETE', '/api/instructions/' + encodeURIComponent(id));
+          await refreshList();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      elDateForm.addEventListener('submit', async (evt) => {
+        evt.preventDefault();
+        try {
+          await api('POST', '/api/instructions', {
+            type: 'date',
+            date: elDateInput.value,
+            text: elDateText.value
+          });
+          elDateText.value = '';
+          await refreshList();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      elNextForm.addEventListener('submit', async (evt) => {
+        evt.preventDefault();
+        try {
+          await api('POST', '/api/instructions', {
+            type: 'next',
+            text: elNextText.value
+          });
+          elNextText.value = '';
+          await refreshList();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      elClearDate.addEventListener('click', async () => {
+        const date = elDateInput.value;
+        if (!date) return;
+        try {
+          await api('DELETE', '/api/instructions/' + encodeURIComponent(date));
+          await refreshList();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      elClearNext.addEventListener('click', async () => {
+        try {
+          await api('DELETE', '/api/instructions/next');
+          await refreshList();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      elForm.addEventListener('submit', (evt) => {
+        evt.preventDefault();
+        password = elPw.value || '';
+        elErr.textContent = '';
+        refreshList().then(() => {
+          elLogin.style.display = 'none';
+          elApp.style.display = 'block';
+        }).catch((err) => {
+          password = '';
+          elErr.textContent = err.message || 'Unauthorized';
+        });
+      });
+    </script>
+  </body>
+</html>`;
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    const msg = err?.stack || err?.message || String(err);
+    logNotify(`[index.js:/admin/instructions] ${msg}`);
+    res.status(500).set('Content-Type', 'text/plain; charset=utf-8').send('Internal Server Error');
   }
 });
 

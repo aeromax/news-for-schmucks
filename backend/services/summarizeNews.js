@@ -1,9 +1,12 @@
 // services/summarizeNews.js
 
 import OpenAI from "openai";
+import { getInstructionForDate } from "./summarizerInstructions.js";
 
 
-function getSystemPrompt(formattedDate) {
+function getSystemPrompt(formattedDate, extraIntroLine) {
+    const sanitized = typeof extraIntroLine === 'string' ? extraIntroLine.replace(/"/g, '\\"') : '';
+    const introAddon = sanitized ? `- Immediately after that sentence, say exactly: "${sanitized}"\n` : '';
     return `You are the world’s most angry, cynical New Yorker delivering a weekly comedic news summary called “News for Schmucks.” Your summary is compiled on a monday, and your commentary is of the past week. You’ve seen too much and give zero f*cks.
 
 Style rules:
@@ -28,7 +31,9 @@ Style rules:
  Hard rules:
 – Never make light of anyone dying, no matter the public sentiment surrounding the individual. – Never mention prompts, tools, or your role. 
 - Output exactly: a one or two line welcome to "News for Schmucks";
-- Say exactly: "It's ${formattedDate} and here's your news for the past week. But first, here's your schmear of history." 
+- Mention the date (${formattedDate})
+– Follow instructions here: ${introAddon}. If it is blank, ignore it completely.
+– Seqgue into "this week's schmear of history." 
 - Then add a brief quip about some event (either obscure or significant) that happened in the past week in history.
 - Then, segue into the news stories.
 - Then, for each provided headline, rewrite them so they sound like natural language. output exactly ONE line in this format: **N. Headline** — your snarky commentary
@@ -45,12 +50,20 @@ export async function summarizeNews(apiKey, urlsOrPrompt, opts = {}) {
     console.log("[Summarize] Generating summary...");
     // Generate current date string like "September 12th, 2025"
     const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const isoDate = `${yyyy}-${mm}-${dd}`;
     const MONTHS = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ];
     function ordinal(n) { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
     const formattedDate = `${MONTHS[now.getMonth()]} ${ordinal(now.getDate())}, ${now.getFullYear()}`;
+    const { text: introInstruction, source: introSource } = await getInstructionForDate(isoDate, { baseDir: opts.storageBaseDir });
+    if (introInstruction) {
+        console.log(`[Summarize] Using intro instruction (${introSource?.type || 'unknown'}): ${introInstruction}`);
+    }
     const openai = new OpenAI({ apiKey });
 
     let messageContent;
@@ -66,7 +79,7 @@ ${opts.prompt}`;
         top_p: 0.95,
         max_tokens: 3000,
         messages: [
-            { role: 'system', content: getSystemPrompt(formattedDate) },
+            { role: 'system', content: getSystemPrompt(formattedDate, introInstruction) },
             { role: 'user', content: messageContent }
         ]
     });

@@ -19,7 +19,7 @@ export async function runJob() {
     let onThisDay = '';
     try { const ev = await fetchOnThisDayEvent(); onThisDay = ev?.text || ''; } catch { }
     const prompt = toPromptBlocks(bundles, { ...(redditBundlesConfig.prompt || {}), onThisDayText: onThisDay });
-    const summary = await summarizeNews(process.env.OPENAI_API_KEY, null, { prompt });
+    const summary = await summarizeNews(process.env.OPENAI_API_KEY, null, { prompt, storageBaseDir: "./" });
     // Append the raw generated summary to persistent JSON log
     await logSummary(summary, null, "./");
     const cleanText = clean(summary);
