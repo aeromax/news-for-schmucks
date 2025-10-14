@@ -51,12 +51,12 @@ async function getJsonWithRetry(url, { headers = {}, timeout = 15000, retries = 
  *  - domain
  *
  * @param {Object} [opts]
- * @param {('hour'|'day'|'week'|'month'|'year'|'all')} [opts.t='day']
+ * @param {('hour'|'day'|'week'|'month'|'year'|'all')} [opts.t='week']
  * @param {number} [opts.limit=25]
  * @returns {Promise<Array<{id:string,title:string,url:string,selftext:string,permalink:string,ups:number,num_comments:number,created_utc:number,domain:string}>>>}
  */
 export async function fetchRedditNewsTop(opts = {}) {
-  const t = opts.t || 'day';
+  const t = opts.t || 'week';
   const limit = Math.max(1, Math.min(100, parseInt(opts.limit, 10) || 25));
   const url = `https://www.reddit.com/r/news/top.json?t=${encodeURIComponent(t)}&limit=${limit}&raw_json=1`;
 

@@ -5,8 +5,8 @@ import { logNotify } from '../utils/notifier.js';
 
 async function main() {
   try {
-    console.log('[TestExtractArticles] Fetching r/news top…');
-    const posts = await fetchRedditNewsTop({ t: 'day', limit: 5 });
+    console.log('[TestExtractArticles] Fetching r/news top for the week…');
+    const posts = await fetchRedditNewsTop({ t: 'week', limit: 5 });
     const urls = posts.map(p => p.url);
     const extracted = await extractArticles(urls, { concurrency: 3 });
     const preview = extracted.map(a => ({ url: a.url, title: a.title, site: a.siteName, summary: (a.summary || '').slice(0, 240) }));

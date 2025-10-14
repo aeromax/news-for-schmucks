@@ -5,8 +5,8 @@ import { logNotify } from '../utils/notifier.js';
 
 async function main() {
   try {
-    logNotify('[TestRedditTone] Fetching top posts…');
-    const posts = await fetchRedditNewsTop({ t: 'day', limit: 10 });
+    logNotify('[TestRedditTone] Fetching top posts for the week…');
+    const posts = await fetchRedditNewsTop({ t: 'week', limit: 10 });
     if (!posts.length) throw new Error('No posts');
     const first = posts[0];
     logNotify(`[TestRedditTone] Using post: ${first.title}`);

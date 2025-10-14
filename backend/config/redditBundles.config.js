@@ -3,7 +3,7 @@
 
 export const redditBundlesConfig = {
   // Reddit timeframe for top posts
-  t: 'day', // 'hour' | 'day' | 'week' | 'month' | 'year' | 'all'
+  t: 'week', // 'hour' | 'day' | 'week' | 'month' | 'year' | 'all'
 
   // How many posts to fetch from Reddit and how many to keep for bundling
   limit: 8,      // fetch this many from Reddit
@@ -17,8 +17,8 @@ export const redditBundlesConfig = {
   minComments: 0,
   minUps: 0,
 
-  // Ignore posts older than this many hours (Infinity = no cap)
-  maxAgeHours: 48,
+  // Ignore posts older than this many hours (168 = seven days for weekly cadence)
+  maxAgeHours: 168,
 
   // Prefer unique domains among selected posts
   diversifyDomains: false,

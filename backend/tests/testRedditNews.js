@@ -5,7 +5,7 @@ import { redditBundlesConfig } from '../config/redditBundles.config.js';
 
 async function main() {
   try {
-    const t = redditBundlesConfig.t || 'day';
+    const t = redditBundlesConfig.t || 'week';
     const limit = Math.max(1, Math.min(100, parseInt(redditBundlesConfig.limit, 10) || 25));
 
     console.log(`[TestRedditNews] Fetching r/news top (t=${t}, limit=${limit})`);

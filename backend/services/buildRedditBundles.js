@@ -33,7 +33,7 @@ async function mapWithLimit(items, limit, fn) {
  * @returns {Promise<Array<{ id: string, title: string, url: string, selftext: string, permalink: string, ups: number, num_comments: number, created_utc: number, domain: string, comments: Array }>>}
  */
 export async function buildRedditBundles(opts = {}) {
-  const t = opts.t || 'day';
+  const t = opts.t || 'week';
   const limit = Math.max(1, Math.min(50, parseInt(opts.limit, 10) || 25));
   const maxStories = Math.max(1, Math.min(12, parseInt(opts.maxStories, 10) || 8));
   const sortBy = (opts.sortBy || 'comments_per_hour'); // 'comments' | 'ups' | 'comments_per_hour'
