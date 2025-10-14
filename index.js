@@ -269,8 +269,8 @@ async function ensureAdminAuth(req, res, label) {
 }
 
 // Password-protected endpoint to view JSONL summary logs (API)
-// Usage: GET /logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
-app.get('/logs', async (req, res) => {
+// Usage: GET /api/logs?date=YYYY-MM-DD&limit=50 (send password via header: x-logs-password)
+app.get('/api/logs', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
@@ -278,7 +278,7 @@ app.get('/logs', async (req, res) => {
     if (!expected || !tokensMatch(expected, provided)) {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
       const ua = req.get('user-agent') || 'unknown';
-      try { await notify(`[index.js:/logs] Unauthorized access from ${ip} | ua:${ua}`); } catch { }
+      try { await notify(`[index.js:/api/logs] Unauthorized access from ${ip} | ua:${ua}`); } catch { }
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -316,7 +316,7 @@ app.get('/logs', async (req, res) => {
     res.json({ ok: true, date, count: entries.length, entries });
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/logs] ${msg}`);
+    logNotify(`[index.js:/api/logs] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
@@ -364,50 +364,252 @@ app.delete('/api/instructions/:key', async (req, res) => {
   }
 });
 
-// Simple HTML admin page for instructions
-app.get('/admin/instructions', async (req, res) => {
+// Unified admin dashboard (instructions + logs)
+app.get('/admin', async (req, res) => {
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const initialDate = (req.query?.date ? String(req.query.date) : `${yyyy}-${mm}-${dd}`).slice(0, 10);
+    const today = `${yyyy}-${mm}-${dd}`;
+
     const html = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>News for Schmucks — Summarizer Instructions</title>
+    <title>News for Schmucks — Admin</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      :root { --bg:#0b0c10; --fg:#eaf0f6; --muted:#9ea7b3; --accent:#ff3083; --card:#15171c; }
-      body { margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
-      h1 { margin:0 0 12px; font-size:20px; }
-      main { max-width: 840px; margin: 40px auto; padding: 0 20px 40px; }
-      section { background:var(--card); border:1px solid #232730; border-radius:12px; padding:20px; margin-bottom:20px; }
-      label { display:block; font-weight:600; margin-bottom:6px; }
-      input[type="date"], textarea { width:100%; background:#0f1218; color:var(--fg); border:1px solid #303540; border-radius:6px; padding:8px; box-sizing:border-box; }
-      textarea { min-height:100px; resize:vertical; }
-      button { background:var(--accent); color:#0b0c10; border:none; border-radius:6px; padding:10px 16px; font-weight:600; cursor:pointer; }
-      button.secondary { background:#222836; color:var(--fg); }
-      ul { list-style:none; margin:0; padding:0; }
-      li { border:1px solid #232730; border-radius:10px; padding:14px; margin-bottom:12px; background:#10131b; display:flex; gap:12px; justify-content:space-between; align-items:flex-start; }
-      .muted { color:var(--muted); font-size:13px; }
-      #login { max-width: 420px; margin: 18vh auto; background: var(--card); padding: 24px; border-radius: 10px; border:1px solid #232730; }
-      #login h2 { margin: 0 0 12px; font-size: 18px; }
-      #login form { display:flex; gap: 8px; }
-      #login input { flex:1; background:#0f1218; color:var(--fg); border:1px solid #303540; border-radius:6px; padding:8px; }
-      #error { color:#ff6b6b; margin-top:10px; min-height:1em; }
+      :root {
+        --bg:#0b0c10;
+        --fg:#eaf0f6;
+        --muted:#a0aab8;
+        --accent:#ff3083;
+        --accent2:#4aa3ff;
+        --card:#15171c;
+        --border:#232730;
+      }
+      * { box-sizing:border-box; }
+      body {
+        margin:0;
+        font-family: system-ui,-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background:var(--bg);
+        color:var(--fg);
+      }
+      h1,h2,h3 { margin:0; font-weight:600; }
+      a { color:var(--accent2); }
+      button {
+        cursor:pointer;
+        border:none;
+        border-radius:6px;
+        background:var(--accent);
+        color:#0b0c10;
+        font-weight:600;
+        padding:9px 14px;
+      }
+      button.secondary {
+        background:#222836;
+        color:var(--fg);
+      }
+      button.ghost {
+        background:transparent;
+        border:1px solid #2d3240;
+        color:var(--muted);
+      }
+      input[type="date"], textarea, select {
+        width:100%;
+        background:#0f1218;
+        color:var(--fg);
+        border:1px solid #303540;
+        border-radius:6px;
+        padding:8px;
+      }
+      textarea { min-height:110px; resize:vertical; }
+      label { font-weight:600; margin-bottom:6px; display:block; }
+
+      #login {
+        max-width: 420px;
+        margin: 18vh auto;
+        background: var(--card);
+        padding: 28px;
+        border-radius: 12px;
+        border:1px solid var(--border);
+        box-shadow: 0 18px 42px rgba(0,0,0,0.36);
+      }
+      #login h2 { margin:0 0 12px; font-size:20px; }
+      #login form { display:flex; gap:10px; margin-top:18px; }
+      #login input[type="password"] {
+        flex:1;
+        background:#10131b;
+        color:var(--fg);
+        border:1px solid #303540;
+        border-radius:6px;
+        padding:10px;
+      }
+      #error { color:#ff6b6b; margin-top:12px; min-height:1.2em; }
       #app { display:none; }
-      .entry-text { white-space:pre-wrap; margin:0; }
-      .entry-meta { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
-      .entry-actions { display:flex; gap:8px; }
+
+      header.top {
+        display:flex;
+        flex-wrap:wrap;
+        gap:16px;
+        align-items:center;
+        justify-content:space-between;
+        padding:24px 28px 12px;
+      }
+      header.top h1 { font-size:22px; }
+      nav.tabs {
+        display:flex;
+        gap:8px;
+      }
+      nav.tabs button {
+        background:#20232d;
+        color:var(--muted);
+        padding:8px 18px;
+        border-radius:999px;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+      nav.tabs button.active {
+        background:var(--accent);
+        color:#0b0c10;
+      }
+
+      main {
+        padding:0 28px 40px;
+      }
+      .panel {
+        display:none;
+      }
+      .panel.active { display:block; }
+
+      .card {
+        background:var(--card);
+        border:1px solid var(--border);
+        border-radius:12px;
+        padding:24px;
+        margin-bottom:24px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.28);
+      }
+      .card h2 { margin-bottom:12px; }
+      .muted { color:var(--muted); font-size:14px; }
+
+      .instructions-list ul {
+        list-style:none;
+        margin:0;
+        padding:0;
+        display:flex;
+        flex-direction:column;
+        gap:12px;
+      }
+      .instructions-list li {
+        border:1px solid #20242d;
+        border-radius:10px;
+        background:#10131b;
+        padding:14px 16px;
+        display:flex;
+        gap:12px;
+        justify-content:space-between;
+        align-items:flex-start;
+      }
+      .instructions-list .entry-text {
+        margin-top:6px;
+        white-space:pre-wrap;
+      }
+      .entry-meta {
+        display:flex;
+        gap:12px;
+        align-items:center;
+        flex-wrap:wrap;
+      }
+      .instructions-actions {
+        display:flex;
+        gap:8px;
+      }
+
+      .logs-layout {
+        display:grid;
+        grid-template-columns:320px 1fr;
+        gap:16px;
+        margin-top:16px;
+        min-height:360px;
+      }
+      .logs-sidebar {
+        border:1px solid #20242d;
+        border-radius:12px;
+        background:#10131b;
+        overflow:auto;
+      }
+      .logs-sidebar ul {
+        list-style:none;
+        margin:0;
+        padding:0;
+      }
+      .logs-sidebar li {
+        border-bottom:1px solid #1c2028;
+        padding:12px 14px;
+        cursor:pointer;
+      }
+      .logs-sidebar li:hover { background:#111722; }
+      .logs-sidebar li.active {
+        background:#0b1220;
+        border-left:3px solid var(--accent2);
+        padding-left:11px;
+      }
+      .log-detail {
+        border:1px solid #20242d;
+        border-radius:12px;
+        background:#10131b;
+        display:flex;
+        flex-direction:column;
+      }
+      .entry-actions {
+        display:flex;
+        gap:10px;
+        padding:10px 12px;
+        border-bottom:1px solid #20242d;
+        background:#161922;
+      }
+      pre#logDetail {
+        flex:1;
+        margin:0;
+        padding:16px;
+        white-space:pre-wrap;
+        word-break:break-word;
+        color:var(--fg);
+      }
+      pre#logDetail.empty {
+        color:var(--muted);
+      }
+      .controls-row {
+        display:flex;
+        gap:12px;
+        flex-wrap:wrap;
+        align-items:flex-end;
+      }
+      .controls-row .field {
+        min-width:220px;
+        flex:1;
+      }
+
+      @media (max-width:960px) {
+        .logs-layout {
+          grid-template-columns:1fr;
+        }
+      }
       @media (max-width:720px) {
-        main { margin: 24px auto; }
-        li { flex-direction:column; }
-        .entry-actions { width:100%; justify-content:flex-end; }
+        header.top {
+          padding:20px 20px 10px;
+        }
+        main { padding:0 20px 32px; }
+        .card { padding:20px; }
       }
     </style>
   </head>
   <body>
     <div id="login">
       <h2>Admin Access</h2>
-      <p class="muted">Enter the logs password to manage summarizer intro instructions.</p>
+      <p class="muted">Enter the logs password to manage intro instructions and review summaries.</p>
       <form id="loginForm">
         <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required />
         <button type="submit">Unlock</button>
@@ -416,170 +618,299 @@ app.get('/admin/instructions', async (req, res) => {
     </div>
 
     <div id="app">
+      <header class="top">
+        <h1>News for Schmucks — Admin Dashboard</h1>
+        <nav class="tabs">
+          <button type="button" data-view="instructions" class="active">Instructions</button>
+          <button type="button" data-view="logs">Logs</button>
+        </nav>
+      </header>
+
       <main>
-        <header>
-          <h1>Summarizer Intro Instructions</h1>
-          <p class="muted">Schedule specific intro notes or queue one for the very next run.</p>
-        </header>
+        <section id="panel-instructions" class="panel active">
+          <div class="card">
+            <h2>Next Run Instruction</h2>
+            <p class="muted">This note is spoken immediately after the history line on the next job. It is consumed once.</p>
+            <form id="nextForm">
+              <label for="nextText">Instruction (max 500 characters)</label>
+              <textarea id="nextText" maxlength="500" placeholder="Example: Oh, and happy Hanukkah, schmucks. Light those candles."></textarea>
+              <div class="instructions-actions" style="margin-top:12px;">
+                <button type="submit">Save for Next Job</button>
+                <button type="button" id="clearNext" class="secondary">Clear</button>
+              </div>
+            </form>
+          </div>
 
-        <section>
-          <h2 style="margin-top:0;">Add or Update Date-Specific Instruction</h2>
-          <form id="dateForm">
-            <label for="dateInput">Run date (YYYY-MM-DD)</label>
-            <input id="dateInput" type="date" value="${today}" required />
-            <label for="dateText">Instruction (max 500 characters)</label>
-            <textarea id="dateText" maxlength="500" placeholder="Example: Remind folks about the live show this Thursday."></textarea>
-            <div style="margin-top:12px; display:flex; gap:8px;">
-              <button type="submit">Save for Date</button>
-              <button type="button" id="clearDate" class="secondary">Remove Date Instruction</button>
-            </div>
-          </form>
+          <div class="card">
+            <h2>Date-Specific Instruction</h2>
+            <p class="muted">Queue a note for a specific run date (UTC). These persist until you replace or remove them.</p>
+            <form id="dateForm">
+              <div class="controls-row">
+                <div class="field" style="max-width:200px;">
+                  <label for="dateInput">Run date</label>
+                  <input id="dateInput" type="date" value="${today}" required />
+                </div>
+              </div>
+              <label for="dateText" style="margin-top:12px;">Instruction (max 500 characters)</label>
+              <textarea id="dateText" maxlength="500" placeholder="Example: Reminder: recordings move to Wednesdays next week."></textarea>
+              <div class="instructions-actions" style="margin-top:12px;">
+                <button type="submit">Save for Date</button>
+                <button type="button" id="clearDate" class="secondary">Remove Date Instruction</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card instructions-list">
+            <h2>Scheduled Instructions</h2>
+            <ul id="instructionList">
+              <li><div><strong>No instructions scheduled.</strong><p class="muted">Add one above to customize the intro.</p></div></li>
+            </ul>
+          </div>
         </section>
 
-        <section>
-          <h2 style="margin-top:0;">Next Run Instruction</h2>
-          <p class="muted">This will be consumed by the very next job that runs.</p>
-          <form id="nextForm">
-            <label for="nextText">Instruction to say after the history line</label>
-            <textarea id="nextText" maxlength="500" placeholder="Example: Oh, and happy Hanukkah, schmucks. Light those candles."></textarea>
-            <div style="margin-top:12px; display:flex; gap:8px;">
-              <button type="submit">Save for Next Run</button>
-              <button type="button" id="clearNext" class="secondary">Clear Next Run</button>
+        <section id="panel-logs" class="panel">
+          <div class="card">
+            <h2>Summary Logs</h2>
+            <p class="muted">Browse stored summaries to see what the model generated for each run.</p>
+            <div class="controls-row" style="margin-top:16px;">
+              <div class="field" style="max-width:220px;">
+                <label for="logDate">Date</label>
+                <select id="logDate"></select>
+              </div>
+              <div>
+                <button type="button" id="refreshLogs" class="ghost">Refresh</button>
+              </div>
             </div>
-          </form>
-        </section>
 
-        <section>
-          <h2 style="margin-top:0;">Current Instructions</h2>
-          <ul id="list"></ul>
+            <div class="logs-layout">
+              <aside class="logs-sidebar">
+                <ul id="logList"></ul>
+              </aside>
+              <div class="log-detail">
+                <div class="entry-actions">
+                  <button type="button" id="copyLog" class="secondary">Copy JSON</button>
+                  <button type="button" id="downloadLog" class="secondary">Download JSON</button>
+                </div>
+                <pre id="logDetail" class="empty">Select an entry to view details…</pre>
+              </div>
+            </div>
+          </div>
         </section>
       </main>
     </div>
 
     <script>
+      const initialDate = ${JSON.stringify(initialDate)};
+      const defaultDate = ${JSON.stringify(today)};
+      let password = '';
+
       const elLogin = document.getElementById('login');
       const elForm = document.getElementById('loginForm');
       const elPw = document.getElementById('pw');
       const elErr = document.getElementById('error');
       const elApp = document.getElementById('app');
-      const elList = document.getElementById('list');
-      const elDateForm = document.getElementById('dateForm');
+
+      const tabButtons = Array.from(document.querySelectorAll('[data-view]'));
+      const panels = {
+        instructions: document.getElementById('panel-instructions'),
+        logs: document.getElementById('panel-logs')
+      };
+
       const elNextForm = document.getElementById('nextForm');
+      const elNextText = document.getElementById('nextText');
+      const elClearNext = document.getElementById('clearNext');
+      const elDateForm = document.getElementById('dateForm');
       const elDateInput = document.getElementById('dateInput');
       const elDateText = document.getElementById('dateText');
-      const elNextText = document.getElementById('nextText');
       const elClearDate = document.getElementById('clearDate');
-      const elClearNext = document.getElementById('clearNext');
+      const elInstructionList = document.getElementById('instructionList');
 
-      let password = '';
+      const elLogDate = document.getElementById('logDate');
+      const elRefreshLogs = document.getElementById('refreshLogs');
+      const elLogList = document.getElementById('logList');
+      const elLogDetail = document.getElementById('logDetail');
+      const elCopyLog = document.getElementById('copyLog');
+      const elDownloadLog = document.getElementById('downloadLog');
 
-      async function api(method, url, body) {
-        const res = await fetch(url, {
-          method,
-          headers: {
-            'x-logs-password': password,
-            'Content-Type': 'application/json'
-          },
-          body: body ? JSON.stringify(body) : null
+      let instructions = { byDate: {}, next: null };
+      let logDates = [];
+      let logEntries = [];
+      let activeEntry = -1;
+      let selectedDate = initialDate;
+
+      function setView(view) {
+        tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+        Object.entries(panels).forEach(([key, panel]) => {
+          panel.classList.toggle('active', key === view);
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) {
-          throw new Error(data.error || 'Request failed');
-        }
-        return data.instructions;
       }
 
-      function renderList(data) {
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => setView(btn.dataset.view));
+      });
+
+      function sanitizeHtml(text) {
+        return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function renderInstructions() {
         const entries = [];
-        if (data.next && data.next.text) {
+        if (instructions.next && instructions.next.text) {
           entries.push({
             id: 'next',
             label: 'Next Run',
-            text: data.next.text,
-            updatedAt: data.next.updatedAt
+            text: instructions.next.text,
+            updatedAt: instructions.next.updatedAt
           });
         }
-        const dates = Object.keys(data.byDate || {}).sort();
-        for (const d of dates) {
+        Object.keys(instructions.byDate || {}).sort().forEach(date => {
+          const item = instructions.byDate[date];
           entries.push({
-            id: d,
-            label: d,
-            text: data.byDate[d]?.text || '',
-            updatedAt: data.byDate[d]?.updatedAt
+            id: date,
+            label: date,
+            text: item?.text || '',
+            updatedAt: item?.updatedAt
           });
-        }
+        });
 
-        if (entries.length === 0) {
-          elList.innerHTML = '<li><div><strong>No instructions scheduled.</strong><p class="muted">Add one above to customize the intro.</p></div></li>';
+        if (!entries.length) {
+          elInstructionList.innerHTML = '<li><div><strong>No instructions scheduled.</strong><p class="muted">Add one above to customize the intro.</p></div></li>';
           return;
         }
 
-        elList.innerHTML = entries.map(e => {
-          const meta = e.updatedAt ? new Date(e.updatedAt).toLocaleString() : '';
-          const escaped = e.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          return '<li data-id="' + e.id + '">\
-            <div style="flex:1;">\
-              <div class="entry-meta"><strong>' + e.label + '</strong>' + (meta ? '<span class="muted">Updated ' + meta + '</span>' : '') + '</div>\
-              <p class="entry-text">' + escaped + '</p>\
+        elInstructionList.innerHTML = entries.map(entry => {
+          const meta = entry.updatedAt ? new Date(entry.updatedAt).toLocaleString() : '';
+          const escaped = sanitizeHtml(entry.text);
+          return '<li data-id=\"' + entry.id + '\">\
+            <div style=\"flex:1;\">\
+              <div class=\"entry-meta\"><strong>' + entry.label + '</strong>' + (meta ? '<span class=\"muted\">Updated ' + meta + '</span>' : '') + '</div>\
+              <p class=\"entry-text\">' + (escaped || '<span class=\"muted\">(no text)</span>') + '</p>\
             </div>\
-            <div class="entry-actions">\
-              <button type="button" class="secondary" data-remove="' + e.id + '">Delete</button>\
+            <div class=\"instructions-actions\">\
+              <button type=\"button\" class=\"secondary\" data-remove=\"' + entry.id + '\">Delete</button>\
             </div>\
           </li>';
         }).join('');
       }
 
-      async function refreshList() {
-        const data = await api('GET', '/api/instructions');
-        renderList(data);
+      function renderLogDates() {
+        if (!logDates.length) {
+          selectedDate = '';
+          elLogDate.innerHTML = '<option value=\"\">No logs found</option>';
+          return;
+        }
+        if (!selectedDate || !logDates.includes(selectedDate)) {
+          selectedDate = logDates[logDates.length - 1];
+        }
+        elLogDate.innerHTML = logDates.map(date => '<option value=\"' + date + '\"' + (date === selectedDate ? ' selected' : '') + '>' + date + '</option>').join('');
       }
 
-      elList.addEventListener('click', async (evt) => {
-        const id = evt.target?.dataset?.remove;
+      function renderLogEntries() {
+        elLogList.innerHTML = '';
+        if (!logEntries.length) {
+          elLogList.innerHTML = '<li><div><strong>No entries for this date.</strong></div></li>';
+          elLogDetail.classList.add('empty');
+          elLogDetail.textContent = 'No entries loaded.';
+          activeEntry = -1;
+          return;
+        }
+
+        logEntries.forEach((entry, idx) => {
+          const li = document.createElement('li');
+          li.dataset.index = String(idx);
+          const text = Array.isArray(entry.text) ? entry.text.join('\\n') : (entry.text || '');
+          const preview = text.slice(0, 140).replace(/\\s+/g, ' ').trim();
+          li.innerHTML = '<div><strong>' + (idx + 1) + '.</strong> ' + (preview || '<span class=\"muted\">(no text)</span>') + '</div>' +
+                         '<div class=\"muted\">' + (entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '') + '</div>';
+          if (idx === activeEntry) li.classList.add('active');
+          elLogList.appendChild(li);
+        });
+        if (activeEntry >= 0 && logEntries[activeEntry]) {
+          elLogDetail.classList.remove('empty');
+          elLogDetail.textContent = JSON.stringify(logEntries[activeEntry], null, 2);
+        } else {
+          elLogDetail.classList.add('empty');
+          elLogDetail.textContent = 'Select an entry to view details…';
+        }
+      }
+
+      elInstructionList.addEventListener('click', async (event) => {
+        const id = event.target?.dataset?.remove;
         if (!id) return;
         try {
-          await api('DELETE', '/api/instructions/' + encodeURIComponent(id));
-          await refreshList();
+          const data = await api('DELETE', '/api/instructions/' + encodeURIComponent(id));
+          instructions = data.instructions || { byDate: {}, next: null };
+          renderInstructions();
         } catch (err) {
           alert(err.message);
         }
       });
 
-      elDateForm.addEventListener('submit', async (evt) => {
-        evt.preventDefault();
-        try {
-          await api('POST', '/api/instructions', {
-            type: 'date',
-            date: elDateInput.value,
-            text: elDateText.value
-          });
-          elDateText.value = '';
-          await refreshList();
-        } catch (err) {
-          alert(err.message);
-        }
+      elLogList.addEventListener('click', (event) => {
+        const li = event.target.closest('li[data-index]');
+        if (!li) return;
+        const idx = Number(li.dataset.index);
+        if (Number.isNaN(idx)) return;
+        activeEntry = idx;
+        renderLogEntries();
       });
 
-      elNextForm.addEventListener('submit', async (evt) => {
-        evt.preventDefault();
+      async function api(method, url, body, options = {}) {
+        const { allow404 = false } = options || {};
+        const headers = { 'x-logs-password': password };
+        const requestOptions = { method, headers };
+        if (body !== undefined) {
+          headers['Content-Type'] = 'application/json';
+          requestOptions.body = JSON.stringify(body);
+        }
+        const res = await fetch(url, requestOptions);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.ok === false) {
+          if (allow404 && res.status === 404) {
+            return { ok: true, notFound: true };
+          }
+          throw new Error(data?.error || 'Request failed');
+        }
+        return data;
+      }
+
+      async function loadInstructions() {
+        const data = await api('GET', '/api/instructions');
+        instructions = data.instructions || { byDate: {}, next: null };
+        renderInstructions();
+      }
+
+      async function loadLogDates() {
+        const data = await api('GET', '/api/logs/dates');
+        logDates = data.dates || [];
+        renderLogDates();
+      }
+
+      async function loadLogEntries() {
+        if (!selectedDate) {
+          logEntries = [];
+          renderLogEntries();
+          return;
+        }
+        const data = await api('GET', '/api/logs?date=' + encodeURIComponent(selectedDate) + '&limit=0', undefined, { allow404: true });
+        if (data?.notFound) {
+          logEntries = [];
+        } else {
+          logEntries = data.entries || [];
+        }
+        activeEntry = -1;
+        renderLogEntries();
+      }
+
+      elNextForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
         try {
-          await api('POST', '/api/instructions', {
-            type: 'next',
-            text: elNextText.value
-          });
+          const payload = { type: 'next', text: elNextText.value || '' };
+          const data = await api('POST', '/api/instructions', payload);
+          instructions = data.instructions || { byDate: {}, next: null };
           elNextText.value = '';
-          await refreshList();
-        } catch (err) {
-          alert(err.message);
-        }
-      });
-
-      elClearDate.addEventListener('click', async () => {
-        const date = elDateInput.value;
-        if (!date) return;
-        try {
-          await api('DELETE', '/api/instructions/' + encodeURIComponent(date));
-          await refreshList();
+          renderInstructions();
+          alert('Next run instruction saved.');
         } catch (err) {
           alert(err.message);
         }
@@ -587,47 +918,119 @@ app.get('/admin/instructions', async (req, res) => {
 
       elClearNext.addEventListener('click', async () => {
         try {
-          await api('DELETE', '/api/instructions/next');
-          await refreshList();
+          const data = await api('DELETE', '/api/instructions/next');
+          instructions = data.instructions || { byDate: {}, next: null };
+          renderInstructions();
         } catch (err) {
           alert(err.message);
         }
       });
 
-      elForm.addEventListener('submit', (evt) => {
-        evt.preventDefault();
-        password = elPw.value || '';
-        elErr.textContent = '';
-        refreshList().then(() => {
+      elDateForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+          const payload = {
+            type: 'date',
+            date: elDateInput.value,
+            text: elDateText.value || ''
+          };
+          const data = await api('POST', '/api/instructions', payload);
+          instructions = data.instructions || { byDate: {}, next: null };
+          elDateText.value = '';
+          renderInstructions();
+          alert('Instruction saved for ' + elDateInput.value + '.');
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      elClearDate.addEventListener('click', async () => {
+        if (!elDateInput.value) return;
+        try {
+          const data = await api('DELETE', '/api/instructions/' + encodeURIComponent(elDateInput.value));
+          instructions = data.instructions || { byDate: {}, next: null };
+          renderInstructions();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+
+      elLogDate.addEventListener('change', async () => {
+        selectedDate = elLogDate.value || '';
+        await loadLogEntries();
+      });
+
+      elRefreshLogs.addEventListener('click', async () => {
+        await loadLogDates();
+        await loadLogEntries();
+      });
+
+      elCopyLog.addEventListener('click', async () => {
+        if (activeEntry < 0 || !logEntries[activeEntry]) return;
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(logEntries[activeEntry], null, 2));
+        } catch (err) {
+          alert('Copy failed');
+        }
+      });
+
+      elDownloadLog.addEventListener('click', () => {
+        if (activeEntry < 0 || !logEntries[activeEntry]) return;
+        const blob = new Blob([JSON.stringify(logEntries[activeEntry], null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const date = selectedDate || 'logs';
+        link.download = 'log-' + date + '-entry-' + (activeEntry + 1) + '.json';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 1000);
+      });
+
+      async function boot() {
+        try {
+          await Promise.all([loadInstructions(), loadLogDates()]);
+          await loadLogEntries();
           elLogin.style.display = 'none';
           elApp.style.display = 'block';
-        }).catch((err) => {
+        } catch (err) {
           password = '';
-          elErr.textContent = err.message || 'Unauthorized';
-        });
+          elErr.textContent = err?.message || 'Unauthorized';
+        }
+      }
+
+      elForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        password = elPw.value || '';
+        elErr.textContent = '';
+        boot();
       });
     </script>
   </body>
 </html>`;
+
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/admin/instructions] ${msg}`);
+    logNotify(`[index.js:/admin] ${msg}`);
     res.status(500).set('Content-Type', 'text/plain; charset=utf-8').send('Internal Server Error');
   }
 });
 
 // List available log dates (filenames) (API)
-// GET //logs/dates (send password via header: x-logs-password)
-app.get('/logs/dates', async (req, res) => {
+// GET /api/logs/dates (send password via header: x-logs-password)
+app.get('/api/logs/dates', async (req, res) => {
   try {
     const expected = process.env.LOGS_PASSWORD || '';
     const provided = extractLogsPassword(req);
     if (!expected || !tokensMatch(expected, provided)) {
       const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
       const ua = req.get('user-agent') || 'unknown';
-      try { await notify(`[index.js:/logs/dates] Unauthorized access from ${ip} | ua:${ua}`); } catch { }
+      try { await notify(`[index.js:/api/logs/dates] Unauthorized access from ${ip} | ua:${ua}`); } catch { }
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
@@ -648,213 +1051,12 @@ app.get('/logs/dates', async (req, res) => {
     res.json({ ok: true, dates });
   } catch (err) {
     const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/logs/dates] ${msg}`);
+    logNotify(`[index.js:/api/logs/dates] ${msg}`);
     res.status(500).json({ ok: false, error: err?.message || 'Unknown error' });
   }
 });
 
 // Simple HTML viewer for logs with selection
-// GET /logs?date=YYYY-MM-DD (enter password on page; sent via headers)
-app.get('/logs', async (req, res) => {
-  try {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const initialDate = (req.query?.date ? String(req.query.date) : `${yyyy}-${mm}-${dd}`).slice(0, 10);
-
-    const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset=\"utf-8\" />
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-    <title>Logs Viewer</title>
-    <style>
-      :root { --bg:#0b0c10; --fg:#eaf0f6; --muted:#a0aab8; --accent:#4aa3ff; --card:#15171c; }
-      body { margin:0; font-family: system-ui,-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
-      header { padding:12px 16px; background:#101218; border-bottom:1px solid #22262d; display:flex; gap:12px; align-items:center; }
-      h1 { font-size:16px; margin:0; font-weight:600; }
-      main { display:grid; grid-template-columns: 360px 1fr; gap:0; height: calc(100vh - 56px); }
-      aside { border-right:1px solid #22262d; background:var(--card); overflow:auto; }
-      section { overflow:auto; }
-      .controls { display:flex; gap:8px; align-items:center; }
-      select, input, button { background:#0e1117; color:var(--fg); border:1px solid #333a44; border-radius:6px; padding:6px 8px; }
-      button { cursor:pointer; }
-      ul { list-style:none; margin:0; padding:0; }
-      li { border-bottom:1px solid #20242b; padding:10px 12px; cursor:pointer; }
-      li:hover { background:#0f1218; }
-      li.active { background:#0b1220; border-left:3px solid var(--accent); padding-left:9px; }
-      .muted { color:var(--muted); font-size:12px; }
-      pre { margin:0; white-space:pre-wrap; word-break:break-word; }
-      .entry-actions { display:flex; gap:8px; padding:8px; border-bottom:1px solid #22262d; background:var(--card); }
-      .empty { padding:24px; color:var(--muted); }
-      /* Login */
-      #login { max-width: 420px; margin: 18vh auto; background: var(--card); padding: 24px; border-radius: 10px; border:1px solid #2a2f3a; }
-      #login h2 { margin: 0 0 12px; font-size: 18px; }
-      #login p { color: var(--muted); margin: 0 0 16px; }
-      #login form { display:flex; gap: 8px; }
-      #error { color: #ff6b6b; margin-top: 10px; min-height: 1em; }
-      #app { display: none; }
-    </style>
-  </head>
-  <body>
-    <div id=\"login\">
-      <h2>Enter Logs Password</h2>
-      <p>Access to logs requires a password.</p>
-      <form id=\"loginForm\">
-        <input id=\"pw\" type=\"password\" placeholder=\"Password\" autocomplete=\"current-password\" required />
-        <button type=\"submit\">View Logs</button>
-      </form>
-      <div id=\"error\"></div>
-    </div>
-
-    <div id=\"app\">
-      <header>
-        <h1>News for Schmucks — Logs</h1>
-        <div class=\"controls\">
-          <label for=\"date\">Date:</label>
-          <select id=\"date\"></select>
-          <button id=\"refresh\">Refresh</button>
-        </div>
-      </header>
-      <main>
-        <aside>
-          <ul id=\"list\"></ul>
-        </aside>
-        <section>
-          <div class=\"entry-actions\">
-            <button id=\"copy\">Copy JSON</button>
-            <button id=\"download\">Download JSON</button>
-          </div>
-          <pre id=\"detail\" class=\"empty\">Select an entry to view details…</pre>
-        </section>
-      </main>
-    </div>
-
-    <script>
-      const initialDate = ${JSON.stringify(initialDate)};
-      let password = '';
-
-      const elLogin = document.getElementById('login');
-      const elForm = document.getElementById('loginForm');
-      const elPw = document.getElementById('pw');
-      const elErr = document.getElementById('error');
-      const elApp = document.getElementById('app');
-
-      const elDate = document.getElementById('date');
-      const elList = document.getElementById('list');
-      const elDetail = document.getElementById('detail');
-      const elCopy = document.getElementById('copy');
-      const elDownload = document.getElementById('download');
-      const elRefresh = document.getElementById('refresh');
-
-      let entries = [];
-      let activeIndex = -1;
-
-      function fmt(ts) {
-        try { return new Date(ts).toLocaleString(); } catch { return ts; }
-      }
-
-      async function fetchDates() {
-        const res = await fetch('/logs/dates', { headers: { 'x-logs-password': password } });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load dates');
-        return data.dates;
-      }
-
-      async function fetchEntries(date) {
-        const res = await fetch('/logs?date=' + encodeURIComponent(date) + '&limit=0', { headers: { 'x-logs-password': password } });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load logs');
-        return data.entries || [];
-      }
-
-      function renderList(items) {
-        elList.innerHTML = '';
-        items.forEach((e, i) => {
-          const li = document.createElement('li');
-          li.dataset.index = String(i);
-          const preview = (Array.isArray(e.text) ? e.text.join('\\n') : (e.text || '')).slice(0, 140).replace(/\\n+/g, ' ');
-          li.innerHTML = '<div><strong>' + (i+1) + '.</strong> ' + (preview || '<span class=\\"muted\\">(no text)</span>') + '</div>' +
-                         '<div class=\\"muted\\">' + (e.urls?.length ? e.urls.join(', ') : '') + '</div>' +
-                         '<div class=\\"muted\\">' + (e.timestamp ? fmt(e.timestamp) : '') + '</div>';
-          li.addEventListener('click', () => selectIndex(i));
-          elList.appendChild(li);
-        });
-      }
-
-      function selectIndex(i) {
-        activeIndex = i;
-        document.querySelectorAll('#list li').forEach((li, idx) => li.classList.toggle('active', idx === i));
-        const e = entries[i];
-        elDetail.classList.remove('empty');
-        elDetail.textContent = JSON.stringify(e, null, 2);
-      }
-
-      elCopy?.addEventListener('click', async () => {
-        if (activeIndex < 0) return;
-        try { await navigator.clipboard.writeText(elDetail.textContent); } catch {}
-      });
-
-      elDownload?.addEventListener('click', () => {
-        if (activeIndex < 0) return;
-        const e = entries[activeIndex];
-        const blob = new Blob([JSON.stringify(e, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        const date = elDate.value || 'logs';
-        a.download = 'log-' + date + '-entry-' + (activeIndex+1) + '.json';
-          a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      });
-
-      elRefresh?.addEventListener('click', async () => {
-        if (!elDate.value) return;
-        entries = await fetchEntries(elDate.value);
-        activeIndex = -1;
-        renderList(entries);
-        elDetail.textContent = 'Select an entry to view details…';
-        elDetail.classList.add('empty');
-      });
-
-      async function boot() {
-        try {
-          const dates = await fetchDates();
-          if (dates.length === 0) {
-            elDate.innerHTML = '<option value=\"\">No logs found</option>';
-            return;
-          }
-          let selected = initialDate && dates.includes(initialDate) ? initialDate : dates[dates.length-1];
-          elDate.innerHTML = dates.map(d => '<option ' + (d===selected?'selected':'') + '>' + d + '</option>').join('');
-          elDate.addEventListener('change', () => { activeIndex = -1; elDetail.textContent = 'Select an entry to view details…'; elDetail.classList.add('empty'); });
-          entries = await fetchEntries(selected);
-          renderList(entries);
-          elLogin.style.display = 'none';
-          elApp.style.display = 'block';
-        } catch (err) {
-          elErr.textContent = err?.message || 'Unauthorized';
-        }
-      }
-
-      elForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        password = elPw.value || '';
-        elErr.textContent = '';
-        boot();
-      });
-    </script>
-  </body>
-</html>`;
-
-    res.set('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
-  } catch (err) {
-    const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/logs] ${msg}`);
-    res.status(500).set('Content-Type', 'text/html; charset=utf-8').send('<!doctype html><html><body><h1>Error</h1><pre>' + (err?.message || 'Unknown error') + '</pre></body></html>');
-  }
-});
-
 // Optional: manual trigger for debugging or webhook pinging (secured)
 app.post("/run-job", async (req, res) => {
   try {
