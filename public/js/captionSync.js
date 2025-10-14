@@ -435,7 +435,7 @@ function startCaptionRaf() {
       const t = audio.currentTime || 0;
       updateScrollForTime(t);
       // Smoothly move toward target
-      const rate = 12; // higher is snappier
+      const rate = 50; // higher is snappier
       const alpha = 1 - Math.exp(-rate * dt);
       setCaptionPos(captionPosPx + (captionTargetPx - captionPosPx) * alpha);
     }
