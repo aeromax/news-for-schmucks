@@ -28,8 +28,6 @@ const storagePath = process.env.STORAGE_DIR
   ? process.env.STORAGE_DIR
   : (process.env.NODE_ENV === 'production' ? '/var/data' : path.join(__dirname, 'storage'));
 
-// Basic health check for Render
-app.get("/healthz", (req, res) => res.status(200).send("ok"));
 
 // Serve static assets
 app.use(express.static(staticPath));
@@ -86,63 +84,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(staticPath, "index.html"));
 });
 
-// Lightweight view notification endpoint
-app.post("/notify-view", express.json({ limit: '8kb' }), async (req, res) => {
-  try {
-    const ua = req.get('user-agent') || 'unknown';
-    const ipRaw = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
-    const ipFirst = String(ipRaw).split(',')[0].trim();
-    const ip = ipFirst.startsWith('::ffff:') ? ipFirst.slice(7) : ipFirst; // normalize IPv4-mapped IPv6
-    const meta = req.body || {};
-    const pathViewed = meta.path || req.originalUrl;
-    const tz = meta.tz || 'unknown-tz';
-    const lang = meta.lang || 'unknown-lang';
-
-    const ipLower = ip.toLowerCase();
-    const blockedIps = new Set(['0.0.0.0', '38.81.107.160', 'localhost', '127.0.0.1']);
-    const isInternalIp = ipLower.startsWith('192.168.');
-    if (blockedIps.has(ipLower) || isInternalIp) {
-      return res.status(204).end();
-    }
-
-    // Start with ip, then append host/city/region and a newline, then other fields
-    let msg = `🙋 Site view: ● ip:${ip}`;
-
-    // Try reverse DNS + geo lookup (non-fatal); add a newline right after this block
-    try {
-      const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '';
-      if (!isLocal) {
-        const url = `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,reverse,city,regionName,query`;
-        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } }).catch(() => null);
-        const data = resp ? await resp.json().catch(() => null) : null;
-        if (data && data.status === 'success') {
-          const host = data.reverse || 'n/a';
-          const city = data.city || 'n/a';
-          const region = data.regionName || 'n/a';
-          msg += ` ● host:${host} ● city:${city} ● region:${region}`;
-        } else {
-          msg += `\n`;
-        }
-      } else {
-        msg += ` ● host:local ● city:n/a ● region:n/a`;
-      }
-    } catch {
-      msg += `\n`;
-    }
-
-    // Append remaining metadata after the newline
-    // msg += ` | ua:${ua} | tz:${tz} | lang:${lang}`;
-    // msg += ` | ua:${ua}`;
-
-    // Fire-and-forget notification
-    try { logNotify(msg); } catch { }
-    res.status(204).end();
-  } catch (err) {
-    const msg = err?.stack || err?.message || String(err);
-    logNotify(`[index.js:/notify-view] ${msg}`);
-    res.status(500).json({ ok: false });
-  }
-});
 
 // Contact form endpoint
 const contactParser = express.json({ limit: '32kb' });
