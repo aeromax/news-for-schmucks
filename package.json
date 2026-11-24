@@ -18,7 +18,7 @@
     "discord.js": "^14.22.1",
     "dotenv": "^17.2.1",
     "express": "^4.18.2",
-    "music-metadata": "^11.7.3",
+    "music-metadata": "^11.16.0",
     "node-fetch": "^3.3.2",
     "openai": "^5.19.1",
     "@mozilla/readability": "^0.4.4",
